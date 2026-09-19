@@ -219,7 +219,7 @@ function SectionHeader({ title, subtitle }) {
           {subtitle}
         </p>
       )}
-      <div className="mt-4 w-20 h-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mx-auto" />
+      <div className="mt-4 w-20 h-1 bg-linear-to-r from-blue-500 to-purple-600 rounded-full mx-auto" />
     </div>
   );
 }
@@ -339,13 +339,13 @@ export default function PortfolioPage() {
       {/* ═══ HERO ═══ */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950" />
+        <div className="absolute inset-0 bg-linear-to-br from-blue-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950" />
         <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/20 dark:bg-blue-500/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400/20 dark:bg-purple-500/10 rounded-full blur-3xl" />
 
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
           {/* Avatar */}
-          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold shadow-2xl shadow-blue-500/25">
+          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold shadow-2xl shadow-blue-500/25">
             MP
           </div>
 
@@ -470,13 +470,13 @@ export default function PortfolioPage() {
         <div className="max-w-4xl mx-auto">
           <div className="relative">
             {/* Timeline line */}
-            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-slate-300 dark:to-slate-700 hidden md:block" />
+            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-linear-to-b from-blue-500 via-purple-500 to-slate-300 dark:to-slate-700 hidden md:block" />
 
             <div className="space-y-8">
               {experience.map((job, idx) => (
                 <div key={idx} className="relative flex gap-6">
                   {/* Timeline dot */}
-                  <div className="hidden md:flex flex-shrink-0 w-16 items-start justify-center pt-6">
+                  <div className="hidden md:flex shrink-0 w-16 items-start justify-center pt-6">
                     <div
                       className={`w-4 h-4 rounded-full border-4 ${
                         job.current
@@ -509,7 +509,7 @@ export default function PortfolioPage() {
                         >
                           <ChevronRight
                             size={16}
-                            className="flex-shrink-0 mt-1 text-blue-500"
+                            className="shrink-0 mt-1 text-blue-500"
                           />
                           <span>{bullet}</span>
                         </li>
@@ -557,7 +557,7 @@ export default function PortfolioPage() {
                   </h3>
                   <ArrowUpRight
                     size={18}
-                    className="flex-shrink-0 text-slate-400 group-hover:text-blue-500 transition-colors"
+                    className="shrink-0 text-slate-400 group-hover:text-blue-500 transition-colors"
                   />
                 </div>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">

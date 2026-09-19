@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import client from '../api/client';
-import toast from 'react-hot-toast';
+import { useState, useEffect, useCallback } from "react";
+import client from "../api/client";
+import toast from "react-hot-toast";
 import {
   LayoutDashboard,
   Palette,
@@ -22,15 +22,15 @@ import {
   ShieldCheck,
   ShieldOff,
   RefreshCw,
-} from 'lucide-react';
+} from "lucide-react";
 
 /* ─── Tab definitions ─── */
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'portfolio', label: 'Portfolio Config', icon: Palette },
-  { id: 'expenses', label: 'Expenses', icon: Receipt },
-  { id: 'medications', label: 'Medications', icon: Pill },
-  { id: 'users', label: 'Users', icon: Users },
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "portfolio", label: "Portfolio Config", icon: Palette },
+  { id: "expenses", label: "Expenses", icon: Receipt },
+  { id: "medications", label: "Medications", icon: Pill },
+  { id: "users", label: "Users", icon: Users },
 ];
 
 /* ═══════════════════════════════════════════════
@@ -42,48 +42,49 @@ function OverviewTab({ onNavigate }) {
 
   useEffect(() => {
     client
-      .get('/admin/stats')
+      .get("/admin/stats")
       .then((res) => setStats(res.data))
-      .catch(() => toast.error('Failed to load stats'))
+      .catch(() => toast.error("Failed to load stats"))
       .finally(() => setLoading(false));
   }, []);
 
   const statCards = stats
     ? [
         {
-          label: 'Total Users',
+          label: "Total Users",
           value: stats.total_users,
           icon: Users,
-          color: 'blue',
+          color: "blue",
         },
         {
-          label: 'Expense Sheets',
+          label: "Expense Sheets",
           value: stats.total_expenses,
           icon: Receipt,
-          color: 'green',
+          color: "green",
         },
         {
-          label: 'Tracked Medications',
+          label: "Tracked Medications",
           value: stats.total_medications,
           icon: Pill,
-          color: 'purple',
+          color: "purple",
         },
         {
-          label: 'Total Expenditure',
+          label: "Total Expenditure",
           value: `₱${(stats.total_expense_amount || 0).toLocaleString()}`,
           icon: DollarSign,
-          color: 'amber',
+          color: "amber",
         },
       ]
     : [];
 
   const colorClasses = {
-    blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
+    blue: "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400",
     green:
-      'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400',
+      "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
     purple:
-      'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
-    amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
+      "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
+    amber:
+      "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400",
   };
 
   return (
@@ -133,21 +134,21 @@ function OverviewTab({ onNavigate }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             {
-              label: 'Portfolio Configurator',
-              desc: 'Edit your portfolio content',
-              tab: 'portfolio',
+              label: "Portfolio Configurator",
+              desc: "Edit your portfolio content",
+              tab: "portfolio",
               icon: Palette,
             },
             {
-              label: 'Expense Tracker',
-              desc: 'Manage income & expenses',
-              tab: 'expenses',
+              label: "Expense Tracker",
+              desc: "Manage income & expenses",
+              tab: "expenses",
               icon: Receipt,
             },
             {
-              label: 'Medication Tracker',
-              desc: 'Track dosages & costs',
-              tab: 'medications',
+              label: "Medication Tracker",
+              desc: "Track dosages & costs",
+              tab: "medications",
               icon: Pill,
             },
           ].map((action) => {
@@ -189,34 +190,34 @@ function PortfolioConfigTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    full_name: '',
-    headline: '',
-    location: '',
-    email: '',
-    phone: '',
-    linkedin_url: '',
-    github_username: '',
-    summary: '',
+    full_name: "",
+    headline: "",
+    location: "",
+    email: "",
+    phone: "",
+    linkedin_url: "",
+    github_username: "",
+    summary: "",
   });
 
   const fetchConfig = useCallback(() => {
     setLoading(true);
     client
-      .get('/portfolio/config')
+      .get("/portfolio/config")
       .then((res) => {
         setConfig(res.data);
         setForm({
-          full_name: res.data.full_name || res.data.name || '',
-          headline: res.data.headline || '',
-          location: res.data.location || '',
-          email: res.data.email || '',
-          phone: res.data.phone || '',
-          linkedin_url: res.data.linkedin_url || res.data.linkedin || '',
-          github_username: res.data.github_username || '',
-          summary: res.data.summary || '',
+          full_name: res.data.full_name || res.data.name || "",
+          headline: res.data.headline || "",
+          location: res.data.location || "",
+          email: res.data.email || "",
+          phone: res.data.phone || "",
+          linkedin_url: res.data.linkedin_url || res.data.linkedin || "",
+          github_username: res.data.github_username || "",
+          summary: res.data.summary || "",
         });
       })
-      .catch(() => toast.error('Failed to load portfolio config'))
+      .catch(() => toast.error("Failed to load portfolio config"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -227,11 +228,11 @@ function PortfolioConfigTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await client.put('/portfolio/config', form);
-      toast.success('Portfolio updated successfully!');
+      await client.put("/portfolio/config", form);
+      toast.success("Portfolio updated successfully!");
       fetchConfig();
     } catch {
-      toast.error('Failed to update portfolio');
+      toast.error("Failed to update portfolio");
     } finally {
       setSaving(false);
     }
@@ -274,16 +275,16 @@ function PortfolioConfigTab() {
             </h3>
             <div className="space-y-4">
               {[
-                { key: 'full_name', label: 'Full Name', type: 'text' },
-                { key: 'headline', label: 'Headline', type: 'text' },
-                { key: 'location', label: 'Location', type: 'text' },
-                { key: 'email', label: 'Email', type: 'email' },
-                { key: 'phone', label: 'Phone', type: 'tel' },
-                { key: 'linkedin_url', label: 'LinkedIn URL', type: 'url' },
+                { key: "full_name", label: "Full Name", type: "text" },
+                { key: "headline", label: "Headline", type: "text" },
+                { key: "location", label: "Location", type: "text" },
+                { key: "email", label: "Email", type: "email" },
+                { key: "phone", label: "Phone", type: "tel" },
+                { key: "linkedin_url", label: "LinkedIn URL", type: "url" },
                 {
-                  key: 'github_username',
-                  label: 'GitHub Username',
-                  type: 'text',
+                  key: "github_username",
+                  label: "GitHub Username",
+                  type: "text",
                 },
               ].map((field) => (
                 <div key={field.key}>
@@ -322,20 +323,20 @@ function PortfolioConfigTab() {
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
             Live Preview
           </h3>
-          <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 rounded-xl p-6">
+          <div className="bg-linear-to-br from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 rounded-xl p-6">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
-                {(form.full_name || 'MP')
-                  .split(' ')
+              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                {(form.full_name || "MP")
+                  .split(" ")
                   .map((n) => n[0])
-                  .join('')
+                  .join("")
                   .slice(0, 2)}
               </div>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white">
-                {form.full_name || 'Your Name'}
+                {form.full_name || "Your Name"}
               </h4>
               <p className="text-blue-600 dark:text-blue-400 font-medium mt-1">
-                {form.headline || 'Your Headline'}
+                {form.headline || "Your Headline"}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
                 {form.location}
@@ -344,7 +345,7 @@ function PortfolioConfigTab() {
                 {form.email}
               </p>
               <p className="text-sm text-slate-600 dark:text-slate-300 mt-4 text-left">
-                {form.summary || 'Your bio summary will appear here...'}
+                {form.summary || "Your bio summary will appear here..."}
               </p>
             </div>
           </div>
@@ -363,18 +364,18 @@ function ExpensesTab() {
   const [showModal, setShowModal] = useState(false);
   const [editSheet, setEditSheet] = useState(null);
   const [formData, setFormData] = useState({
-    title: '',
-    gross_income: '',
-    items: [{ description: '', amount: '' }],
-    tax_deductions: [{ description: '', amount: '' }],
+    title: "",
+    gross_income: "",
+    items: [{ description: "", amount: "" }],
+    tax_deductions: [{ description: "", amount: "" }],
   });
 
   const fetchSheets = useCallback(() => {
     setLoading(true);
     client
-      .get('/expenses/')
+      .get("/expenses/")
       .then((res) => setSheets(res.data))
-      .catch(() => toast.error('Failed to load expenses'))
+      .catch(() => toast.error("Failed to load expenses"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -385,10 +386,10 @@ function ExpensesTab() {
   const openCreate = () => {
     setEditSheet(null);
     setFormData({
-      title: '',
-      gross_income: '',
-      items: [{ description: '', amount: '' }],
-      tax_deductions: [{ description: '', amount: '' }],
+      title: "",
+      gross_income: "",
+      items: [{ description: "", amount: "" }],
+      tax_deductions: [{ description: "", amount: "" }],
     });
     setShowModal(true);
   };
@@ -396,20 +397,20 @@ function ExpensesTab() {
   const openEdit = (sheet) => {
     setEditSheet(sheet);
     setFormData({
-      title: sheet.title || '',
-      gross_income: sheet.gross_income || '',
+      title: sheet.title || "",
+      gross_income: sheet.gross_income || "",
       items: sheet.items?.length
         ? sheet.items.map((i) => ({
             description: i.description,
             amount: i.amount,
           }))
-        : [{ description: '', amount: '' }],
+        : [{ description: "", amount: "" }],
       tax_deductions: sheet.tax_deductions?.length
         ? sheet.tax_deductions.map((d) => ({
             description: d.description,
             amount: d.amount,
           }))
-        : [{ description: '', amount: '' }],
+        : [{ description: "", amount: "" }],
     });
     setShowModal(true);
   };
@@ -422,7 +423,7 @@ function ExpensesTab() {
           gross_income: parseFloat(formData.gross_income) || 0,
         });
       } else {
-        await client.post('/expenses/', {
+        await client.post("/expenses/", {
           title: formData.title,
           gross_income: parseFloat(formData.gross_income) || 0,
           items: formData.items
@@ -439,29 +440,31 @@ function ExpensesTab() {
             })),
         });
       }
-      toast.success(editSheet ? 'Expense sheet updated!' : 'Expense sheet created!');
+      toast.success(
+        editSheet ? "Expense sheet updated!" : "Expense sheet created!",
+      );
       setShowModal(false);
       fetchSheets();
     } catch {
-      toast.error('Failed to save expense sheet');
+      toast.error("Failed to save expense sheet");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this expense sheet?')) return;
+    if (!confirm("Are you sure you want to delete this expense sheet?")) return;
     try {
       await client.delete(`/expenses/${id}`);
-      toast.success('Expense sheet deleted');
+      toast.success("Expense sheet deleted");
       fetchSheets();
     } catch {
-      toast.error('Failed to delete expense sheet');
+      toast.error("Failed to delete expense sheet");
     }
   };
 
   const addItem = (type) => {
     setFormData((f) => ({
       ...f,
-      [type]: [...f[type], { description: '', amount: '' }],
+      [type]: [...f[type], { description: "", amount: "" }],
     }));
   };
 
@@ -476,7 +479,7 @@ function ExpensesTab() {
     setFormData((f) => ({
       ...f,
       [type]: f[type].map((item, i) =>
-        i === idx ? { ...item, [field]: value } : item
+        i === idx ? { ...item, [field]: value } : item,
       ),
     }));
   };
@@ -535,11 +538,14 @@ function ExpensesTab() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {[
-                  { label: 'Gross Income', value: sheet.gross_income },
-                  { label: 'Tax Deductions', value: sheet.total_tax_deductions },
-                  { label: 'Net Income', value: sheet.net_income },
-                  { label: 'Total Expenses', value: sheet.total_expenses },
-                  { label: 'Remaining', value: sheet.remaining_income },
+                  { label: "Gross Income", value: sheet.gross_income },
+                  {
+                    label: "Tax Deductions",
+                    value: sheet.total_tax_deductions,
+                  },
+                  { label: "Net Income", value: sheet.net_income },
+                  { label: "Total Expenses", value: sheet.total_expenses },
+                  { label: "Remaining", value: sheet.remaining_income },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -565,7 +571,7 @@ function ExpensesTab() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                {editSheet ? 'Edit Expense Sheet' : 'New Expense Sheet'}
+                {editSheet ? "Edit Expense Sheet" : "New Expense Sheet"}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
@@ -612,7 +618,7 @@ function ExpensesTab() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => addItem('tax_deductions')}
+                    onClick={() => addItem("tax_deductions")}
                     className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                   >
                     <Plus size={14} /> Add
@@ -626,10 +632,10 @@ function ExpensesTab() {
                       value={d.description}
                       onChange={(e) =>
                         updateItem(
-                          'tax_deductions',
+                          "tax_deductions",
                           idx,
-                          'description',
-                          e.target.value
+                          "description",
+                          e.target.value,
                         )
                       }
                       className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
@@ -640,10 +646,10 @@ function ExpensesTab() {
                       value={d.amount}
                       onChange={(e) =>
                         updateItem(
-                          'tax_deductions',
+                          "tax_deductions",
                           idx,
-                          'amount',
-                          e.target.value
+                          "amount",
+                          e.target.value,
                         )
                       }
                       className="w-28 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
@@ -651,7 +657,7 @@ function ExpensesTab() {
                     {formData.tax_deductions.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => removeItem('tax_deductions', idx)}
+                        onClick={() => removeItem("tax_deductions", idx)}
                         className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
                       >
                         <Trash2 size={14} />
@@ -670,7 +676,7 @@ function ExpensesTab() {
                     </label>
                     <button
                       type="button"
-                      onClick={() => addItem('items')}
+                      onClick={() => addItem("items")}
                       className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                     >
                       <Plus size={14} /> Add
@@ -683,7 +689,12 @@ function ExpensesTab() {
                         placeholder="Description"
                         value={item.description}
                         onChange={(e) =>
-                          updateItem('items', idx, 'description', e.target.value)
+                          updateItem(
+                            "items",
+                            idx,
+                            "description",
+                            e.target.value,
+                          )
                         }
                         className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
                       />
@@ -692,14 +703,14 @@ function ExpensesTab() {
                         placeholder="Amount"
                         value={item.amount}
                         onChange={(e) =>
-                          updateItem('items', idx, 'amount', e.target.value)
+                          updateItem("items", idx, "amount", e.target.value)
                         }
                         className="w-28 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
                       />
                       {formData.items.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => removeItem('items', idx)}
+                          onClick={() => removeItem("items", idx)}
                           className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
                         >
                           <Trash2 size={14} />
@@ -714,7 +725,7 @@ function ExpensesTab() {
                 onClick={handleSave}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25"
               >
-                {editSheet ? 'Update Sheet' : 'Create Sheet'}
+                {editSheet ? "Update Sheet" : "Create Sheet"}
               </button>
             </div>
           </div>
@@ -732,14 +743,14 @@ function MedicationsTab() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editMed, setEditMed] = useState(null);
-  const [form, setForm] = useState({ name: '', cost: '', doses_taken: '0' });
+  const [form, setForm] = useState({ name: "", cost: "", doses_taken: "0" });
 
   const fetchMeds = useCallback(() => {
     setLoading(true);
     client
-      .get('/medications/')
+      .get("/medications/")
       .then((res) => setMeds(res.data))
-      .catch(() => toast.error('Failed to load medications'))
+      .catch(() => toast.error("Failed to load medications"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -749,7 +760,7 @@ function MedicationsTab() {
 
   const openCreate = () => {
     setEditMed(null);
-    setForm({ name: '', cost: '', doses_taken: '0' });
+    setForm({ name: "", cost: "", doses_taken: "0" });
     setShowModal(true);
   };
 
@@ -772,36 +783,36 @@ function MedicationsTab() {
       };
       if (editMed) {
         await client.put(`/medications/${editMed.id}`, payload);
-        toast.success('Medication updated!');
+        toast.success("Medication updated!");
       } else {
-        await client.post('/medications/', payload);
-        toast.success('Medication added!');
+        await client.post("/medications/", payload);
+        toast.success("Medication added!");
       }
       setShowModal(false);
       fetchMeds();
     } catch {
-      toast.error('Failed to save medication');
+      toast.error("Failed to save medication");
     }
   };
 
   const handleTakeDose = async (id) => {
     try {
       await client.post(`/medications/${id}/take`, { doses: 1 });
-      toast.success('+1 dose logged!');
+      toast.success("+1 dose logged!");
       fetchMeds();
     } catch {
-      toast.error('Failed to log dose');
+      toast.error("Failed to log dose");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this medication?')) return;
+    if (!confirm("Delete this medication?")) return;
     try {
       await client.delete(`/medications/${id}`);
-      toast.success('Medication deleted');
+      toast.success("Medication deleted");
       fetchMeds();
     } catch {
-      toast.error('Failed to delete medication');
+      toast.error("Failed to delete medication");
     }
   };
 
@@ -876,7 +887,12 @@ function MedicationsTab() {
                     Total Spent
                   </p>
                   <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                    ₱{(med.total_spent || med.cost * med.doses_taken || 0).toFixed(2)}
+                    ₱
+                    {(
+                      med.total_spent ||
+                      med.cost * med.doses_taken ||
+                      0
+                    ).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -898,7 +914,7 @@ function MedicationsTab() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
             <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                {editMed ? 'Edit Medication' : 'Add Medication'}
+                {editMed ? "Edit Medication" : "Add Medication"}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
@@ -954,7 +970,7 @@ function MedicationsTab() {
                 onClick={handleSave}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25"
               >
-                {editMed ? 'Update' : 'Add Medication'}
+                {editMed ? "Update" : "Add Medication"}
               </button>
             </div>
           </div>
@@ -974,9 +990,9 @@ function UsersTab() {
   const fetchUsers = useCallback(() => {
     setLoading(true);
     client
-      .get('/admin/users')
+      .get("/admin/users")
       .then((res) => setUsers(res.data))
-      .catch(() => toast.error('Failed to load users'))
+      .catch(() => toast.error("Failed to load users"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -992,7 +1008,7 @@ function UsersTab() {
       toast.success(`User role updated`);
       fetchUsers();
     } catch {
-      toast.error('Failed to update user role');
+      toast.error("Failed to update user role");
     }
   };
 
@@ -1043,9 +1059,8 @@ function UsersTab() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
-                          {(u.first_name?.[0] || '') +
-                            (u.last_name?.[0] || '')}
+                        <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
+                          {(u.first_name?.[0] || "") + (u.last_name?.[0] || "")}
                         </div>
                         <span className="font-medium text-slate-900 dark:text-white">
                           {u.first_name} {u.last_name}
@@ -1059,8 +1074,8 @@ function UsersTab() {
                       <span
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
                           u.admin
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                         }`}
                       >
                         {u.admin ? (
@@ -1068,7 +1083,7 @@ function UsersTab() {
                             <ShieldCheck size={12} /> Admin
                           </>
                         ) : (
-                          'User'
+                          "User"
                         )}
                       </span>
                     </td>
@@ -1077,8 +1092,8 @@ function UsersTab() {
                         onClick={() => toggleRole(u.id, u.admin)}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                           u.admin
-                            ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
-                            : 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                            ? "text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            : "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                         }`}
                       >
                         {u.admin ? (
@@ -1107,19 +1122,19 @@ function UsersTab() {
    MAIN ADMIN DASHBOARD
    ═══════════════════════════════════════════════ */
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'overview':
+      case "overview":
         return <OverviewTab onNavigate={setActiveTab} />;
-      case 'portfolio':
+      case "portfolio":
         return <PortfolioConfigTab />;
-      case 'expenses':
+      case "expenses":
         return <ExpensesTab />;
-      case 'medications':
+      case "medications":
         return <MedicationsTab />;
-      case 'users':
+      case "users":
         return <UsersTab />;
       default:
         return <OverviewTab onNavigate={setActiveTab} />;
@@ -1140,8 +1155,8 @@ export default function AdminDashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <Icon size={18} />
