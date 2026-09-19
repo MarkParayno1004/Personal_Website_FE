@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import client from '../api/client';
+import { useState, useEffect, useMemo } from "react";
+import client from "../api/client";
 import {
   MapPin,
   Mail,
@@ -21,170 +21,186 @@ import {
   ChevronRight,
   ThumbsUp,
   ArrowUpRight,
-} from 'lucide-react';
-import { GithubIcon as Github, LinkedinIcon as Linkedin } from '../components/BrandIcons';
+} from "lucide-react";
+import {
+  GithubIcon as Github,
+  LinkedinIcon as Linkedin,
+} from "../components/BrandIcons";
 
 /* ─── Static data (fallback when API is unavailable) ─── */
 const PROFILE = {
-  name: 'Mark Philip V. Parayno',
-  headline: 'Software Engineer | Mobile & Web Applications',
-  location: 'San Juan City, Philippines',
-  email: 'paraynomarkphilip@gmail.com',
-  phone: '+63 961 312 8973',
-  linkedin: 'https://www.linkedin.com/in/mark-philip-parayno/',
-  github: 'https://github.com/MarkParayno1004',
+  name: "Mark Philip V. Parayno",
+  headline: "Software Engineer | Mobile & Web Applications",
+  location: "San Juan City, Philippines",
+  email: "paraynomarkphilip@gmail.com",
+  phone: "+63 961 312 8973",
+  linkedin: "https://www.linkedin.com/in/mark-philip-parayno/",
+  github: "https://github.com/MarkParayno1004",
   summary:
-    'Results-driven Software Engineer with hands-on production experience building mobile and web applications for a large retail enterprise. Skilled across Flutter, Svelte, React, Django, and Laravel with a passion for clean architecture, performance optimization, and modern developer tooling.',
+    "Results-driven Software Engineer with hands-on production experience building mobile and web applications for a large retail enterprise. Skilled across Flutter, Svelte, React, Django, and Laravel with a passion for clean architecture, performance optimization, and modern developer tooling.",
 };
 
 const SKILLS = [
   {
-    category: 'Languages',
+    category: "Languages",
     icon: Code2,
-    color: 'blue',
-    items: ['TypeScript', 'JavaScript', 'Dart', 'Python', 'PHP', 'HTML', 'CSS'],
+    color: "blue",
+    items: ["TypeScript", "JavaScript", "Dart", "Python", "PHP", "HTML", "CSS"],
   },
   {
-    category: 'Frontend',
+    category: "Frontend",
     icon: Layers,
-    color: 'purple',
-    items: ['React', 'Svelte', 'Flutter', 'Material UI', 'Tailwind CSS', 'Bootstrap'],
+    color: "purple",
+    items: [
+      "React",
+      "Svelte",
+      "Flutter",
+      "Material UI",
+      "Tailwind CSS",
+      "Bootstrap",
+    ],
   },
   {
-    category: 'Backend',
+    category: "Backend",
     icon: Database,
-    color: 'green',
-    items: ['Django', 'Laravel', 'GraphQL', 'REST APIs'],
+    color: "green",
+    items: ["Django", "Laravel", "GraphQL", "REST APIs"],
   },
   {
-    category: 'Data',
+    category: "Data",
     icon: Database,
-    color: 'amber',
-    items: ['PostgreSQL', 'MongoDB', 'Firebase'],
+    color: "amber",
+    items: ["PostgreSQL", "MongoDB", "Firebase"],
   },
   {
-    category: 'Cloud & DevOps',
+    category: "Cloud & DevOps",
     icon: Cloud,
-    color: 'cyan',
-    items: ['AWS', 'Jenkins', 'CircleCI', 'CI/CD'],
+    color: "cyan",
+    items: ["AWS", "Jenkins", "CircleCI", "CI/CD"],
   },
   {
-    category: 'Practices',
+    category: "Practices",
     icon: Users,
-    color: 'rose',
-    items: ['Agile/Scrum', 'Code Review', 'AI-assisted development (Cursor, Gemini)'],
+    color: "rose",
+    items: [
+      "Agile/Scrum",
+      "Code Review",
+      "AI-assisted development (Cursor, Gemini)",
+    ],
   },
 ];
 
 const EXPERIENCE = [
   {
-    title: 'Software Specialist',
-    company: 'Shopping Center Management Corporation (SM Prime Holdings, Inc.)',
-    period: 'Sep 2024 - Present',
+    title: "Software Specialist",
+    company: "Shopping Center Management Corporation (SM Prime Holdings, Inc.)",
+    period: "Sep 2024 - Present",
     current: true,
     bullets: [
-      'Centralized image asset database in Laravel with file conversion & import/export features.',
-      'Svelte microsites and e-commerce platform capabilities.',
-      'Financial app refactoring, eliminating N+1 queries, reducing API response times.',
-      'Internal CMS application support, Jenkins & CircleCI CI/CD pipeline management.',
+      "Centralized image asset database in Laravel with file conversion & import/export features.",
+      "Svelte microsites and e-commerce platform capabilities.",
+      "Financial app refactoring, eliminating N+1 queries, reducing API response times.",
+      "Internal CMS application support, Jenkins & CircleCI CI/CD pipeline management.",
     ],
   },
   {
-    title: 'Software Engineer Intern',
-    company: 'Shopping Center Management Corporation (SM Prime Holdings, Inc.)',
-    period: 'Dec 2023 - May 2024',
+    title: "Software Engineer Intern",
+    company: "Shopping Center Management Corporation (SM Prime Holdings, Inc.)",
+    period: "Dec 2023 - May 2024",
     current: false,
     bullets: [
-      'Mobile and web application maintenance, Flutter/Dart refactoring, APK testing builds.',
-      'Collaborated with senior engineers on feature development and code reviews.',
+      "Mobile and web application maintenance, Flutter/Dart refactoring, APK testing builds.",
+      "Collaborated with senior engineers on feature development and code reviews.",
     ],
   },
   {
-    title: 'IT Support Intern',
-    company: 'National University',
-    period: 'May 2024 - Jun 2024',
+    title: "IT Support Intern",
+    company: "National University",
+    period: "May 2024 - Jun 2024",
     current: false,
     bullets: [
-      'Hardware/software support, enrollment ID systems, computer lab maintenance.',
-      'Assisted faculty and students with technical troubleshooting and system setup.',
+      "Hardware/software support, enrollment ID systems, computer lab maintenance.",
+      "Assisted faculty and students with technical troubleshooting and system setup.",
     ],
   },
 ];
 
 const EDUCATION = [
   {
-    degree: 'B.S. Information Technology',
-    specialization: 'Mobile & Web Application',
-    school: 'National University Philippines, Manila',
-    year: 'Sep 2024',
+    degree: "B.S. Information Technology",
+    specialization: "Mobile & Web Application",
+    school: "National University Philippines, Manila",
+    year: "Sep 2024",
     icon: GraduationCap,
   },
 ];
 
 const colorMap = {
   blue: {
-    bg: 'bg-blue-50 dark:bg-blue-900/20',
-    text: 'text-blue-600 dark:text-blue-400',
-    border: 'border-blue-200 dark:border-blue-800',
-    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    text: "text-blue-600 dark:text-blue-400",
+    border: "border-blue-200 dark:border-blue-800",
+    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   },
   purple: {
-    bg: 'bg-purple-50 dark:bg-purple-900/20',
-    text: 'text-purple-600 dark:text-purple-400',
-    border: 'border-purple-200 dark:border-purple-800',
-    badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+    bg: "bg-purple-50 dark:bg-purple-900/20",
+    text: "text-purple-600 dark:text-purple-400",
+    border: "border-purple-200 dark:border-purple-800",
+    badge:
+      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
   },
   green: {
-    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-    text: 'text-emerald-600 dark:text-emerald-400',
-    border: 'border-emerald-200 dark:border-emerald-800',
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    text: "text-emerald-600 dark:text-emerald-400",
+    border: "border-emerald-200 dark:border-emerald-800",
     badge:
-      'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
   },
   amber: {
-    bg: 'bg-amber-50 dark:bg-amber-900/20',
-    text: 'text-amber-600 dark:text-amber-400',
-    border: 'border-amber-200 dark:border-amber-800',
-    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    bg: "bg-amber-50 dark:bg-amber-900/20",
+    text: "text-amber-600 dark:text-amber-400",
+    border: "border-amber-200 dark:border-amber-800",
+    badge:
+      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
   },
   cyan: {
-    bg: 'bg-cyan-50 dark:bg-cyan-900/20',
-    text: 'text-cyan-600 dark:text-cyan-400',
-    border: 'border-cyan-200 dark:border-cyan-800',
-    badge: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
+    bg: "bg-cyan-50 dark:bg-cyan-900/20",
+    text: "text-cyan-600 dark:text-cyan-400",
+    border: "border-cyan-200 dark:border-cyan-800",
+    badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
   },
   rose: {
-    bg: 'bg-rose-50 dark:bg-rose-900/20',
-    text: 'text-rose-600 dark:text-rose-400',
-    border: 'border-rose-200 dark:border-rose-800',
-    badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
+    bg: "bg-rose-50 dark:bg-rose-900/20",
+    text: "text-rose-600 dark:text-rose-400",
+    border: "border-rose-200 dark:border-rose-800",
+    badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
   },
 };
 
 /* ─── Language color badges ─── */
 const langColors = {
-  JavaScript: '#f7df1e',
-  TypeScript: '#3178c6',
-  Python: '#3572a5',
-  Dart: '#00b4ab',
-  PHP: '#4F5D95',
-  HTML: '#e34c26',
-  CSS: '#563d7c',
-  Java: '#b07219',
-  Kotlin: '#A97BFF',
-  Swift: '#F05138',
-  Ruby: '#701516',
-  Go: '#00ADD8',
-  Rust: '#dea584',
-  'C++': '#f34b7d',
-  C: '#555555',
-  'C#': '#239120',
-  Shell: '#89e051',
-  Svelte: '#ff3e00',
+  JavaScript: "#f7df1e",
+  TypeScript: "#3178c6",
+  Python: "#3572a5",
+  Dart: "#00b4ab",
+  PHP: "#4F5D95",
+  HTML: "#e34c26",
+  CSS: "#563d7c",
+  Java: "#b07219",
+  Kotlin: "#A97BFF",
+  Swift: "#F05138",
+  Ruby: "#701516",
+  Go: "#00ADD8",
+  Rust: "#dea584",
+  "C++": "#f34b7d",
+  C: "#555555",
+  "C#": "#239120",
+  Shell: "#89e051",
+  Svelte: "#ff3e00",
 };
 
 /* ─── Section wrapper ─── */
-function Section({ id, children, className = '' }) {
+function Section({ id, children, className = "" }) {
   return (
     <section id={id} className={`py-20 ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
@@ -210,41 +226,102 @@ function SectionHeader({ title, subtitle }) {
 
 export default function PortfolioPage() {
   const [repos, setRepos] = useState([]);
-  const [posts, setPosts] = useState([]);
-  const [repoSearch, setRepoSearch] = useState('');
-  const [langFilter, setLangFilter] = useState('');
+  const [repoSearch, setRepoSearch] = useState("");
+  const [langFilter, setLangFilter] = useState("");
   const [loadingRepos, setLoadingRepos] = useState(true);
-  const [loadingPosts, setLoadingPosts] = useState(true);
   const [config, setConfig] = useState(null);
 
   useEffect(() => {
     // Fetch portfolio config
     client
-      .get('/portfolio/config')
+      .get("/portfolio/config")
       .then((res) => setConfig(res.data))
       .catch(() => {});
 
-    // Fetch GitHub repos
+    //Fetch GitHub repos
     client
-      .get('/github/repos', {
-        params: { username: 'MarkParayno1004', limit: 10 },
+      .get("/github/repos", {
+        params: { username: "MarkParayno1004", limit: 10 },
       })
       .then((res) => setRepos(res.data))
       .catch(() => {})
       .finally(() => setLoadingRepos(false));
-
-    // Fetch LinkedIn posts
-    client
-      .get('/linkedin/posts', { params: { limit: 5 } })
-      .then((res) => setPosts(res.data))
-      .catch(() => {})
-      .finally(() => setLoadingPosts(false));
   }, []);
 
-  const profile = config || PROFILE;
-  const skills = config?.skills || SKILLS;
-  const experience = config?.experience || EXPERIENCE;
-  const education = config?.education || EDUCATION;
+  const profile = useMemo(() => {
+    if (!config) return PROFILE;
+    return {
+      name: config.full_name || config.name || PROFILE.name,
+      headline: config.headline || PROFILE.headline,
+      location: config.location || PROFILE.location,
+      email: config.email || PROFILE.email,
+      phone: config.phone || PROFILE.phone,
+      linkedin: config.linkedin_url || config.linkedin || PROFILE.linkedin,
+      github: config.github_username
+        ? config.github_username.startsWith("http")
+          ? config.github_username
+          : `https://github.com/${config.github_username}?tab=repositories`
+        : config.github || PROFILE.github,
+      summary: config.about_summary || config.summary || PROFILE.summary,
+    };
+  }, [config]);
+
+  const skills = useMemo(() => {
+    if (!config?.skills) return SKILLS;
+    if (Array.isArray(config.skills)) return config.skills;
+    if (typeof config.skills === "object") {
+      const skillCategoryMeta = {
+        Languages: { icon: Code2, color: "blue" },
+        Frontend: { icon: Layers, color: "purple" },
+        Backend: { icon: Database, color: "green" },
+        Data: { icon: Database, color: "amber" },
+        "Cloud & DevOps": { icon: Cloud, color: "cyan" },
+        Practices: { icon: Users, color: "rose" },
+      };
+      return Object.entries(config.skills).map(([category, items]) => ({
+        category,
+        icon: skillCategoryMeta[category]?.icon || Code2,
+        color: skillCategoryMeta[category]?.color || "blue",
+        items: Array.isArray(items) ? items : [],
+      }));
+    }
+    return SKILLS;
+  }, [config]);
+
+  const experience = useMemo(() => {
+    if (
+      !config?.experience ||
+      !Array.isArray(config.experience) ||
+      config.experience.length === 0
+    ) {
+      return EXPERIENCE;
+    }
+    return config.experience.map((job) => ({
+      title: job.role || job.title || "",
+      company: job.company || "",
+      period: job.period || "",
+      current:
+        job.period?.toLowerCase().includes("present") ?? job.current ?? false,
+      bullets: Array.isArray(job.bullets) ? job.bullets : [],
+    }));
+  }, [config]);
+
+  const education = useMemo(() => {
+    if (
+      !config?.education ||
+      !Array.isArray(config.education) ||
+      config.education.length === 0
+    ) {
+      return EDUCATION;
+    }
+    return config.education.map((edu) => ({
+      degree: edu.degree || "",
+      specialization: edu.specialization || "",
+      school: edu.institution || edu.school || "",
+      year: edu.graduation_date || edu.year || "",
+      icon: edu.icon || GraduationCap,
+    }));
+  }, [config]);
 
   /* ─── Repo filtering ─── */
   const languages = [...new Set(repos.map((r) => r.language).filter(Boolean))];
@@ -403,8 +480,8 @@ export default function PortfolioPage() {
                     <div
                       className={`w-4 h-4 rounded-full border-4 ${
                         job.current
-                          ? 'border-blue-500 bg-blue-100 dark:bg-blue-900'
-                          : 'border-slate-400 bg-white dark:bg-slate-800'
+                          ? "border-blue-500 bg-blue-100 dark:bg-blue-900"
+                          : "border-slate-400 bg-white dark:bg-slate-800"
                       }`}
                     />
                   </div>
@@ -453,41 +530,6 @@ export default function PortfolioPage() {
           subtitle="Open source work and personal projects"
         />
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-8 max-w-2xl mx-auto">
-          <div className="relative flex-1">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              type="text"
-              placeholder="Search repositories..."
-              value={repoSearch}
-              onChange={(e) => setRepoSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
-            />
-          </div>
-          <div className="relative">
-            <Filter
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <select
-              value={langFilter}
-              onChange={(e) => setLangFilter(e.target.value)}
-              className="pl-10 pr-8 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none cursor-pointer text-slate-900 dark:text-white"
-            >
-              <option value="">All Languages</option>
-              {languages.map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         {/* Repo Grid */}
         {loadingRepos ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -519,7 +561,7 @@ export default function PortfolioPage() {
                   />
                 </div>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">
-                  {repo.description || 'No description available'}
+                  {repo.description || "No description available"}
                 </p>
                 <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
                   {repo.language && (
@@ -527,7 +569,8 @@ export default function PortfolioPage() {
                       <span
                         className="w-3 h-3 rounded-full"
                         style={{
-                          backgroundColor: langColors[repo.language] || '#6b7280',
+                          backgroundColor:
+                            langColors[repo.language] || "#6b7280",
                         }}
                       />
                       {repo.language}
@@ -547,11 +590,14 @@ export default function PortfolioPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <Github size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+            <Github
+              size={48}
+              className="mx-auto text-slate-300 dark:text-slate-600 mb-4"
+            />
             <p className="text-slate-500 dark:text-slate-400">
               {repos.length === 0
-                ? 'Unable to load repositories. Visit GitHub directly.'
-                : 'No repositories match your search.'}
+                ? "Unable to load repositories. Visit GitHub directly."
+                : "No repositories match your search."}
             </p>
             {repos.length === 0 && (
               <a
@@ -568,85 +614,6 @@ export default function PortfolioPage() {
         )}
       </Section>
 
-      {/* ═══ LINKEDIN FEED ═══ */}
-      <Section id="linkedin">
-        <SectionHeader
-          title="LinkedIn Highlights"
-          subtitle="Recent posts, events, and professional activity"
-        />
-        {loadingPosts ? (
-          <div className="max-w-3xl mx-auto space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="glass-card p-6 animate-pulse">
-                <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-3" />
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full mb-2" />
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
-              </div>
-            ))}
-          </div>
-        ) : posts.length > 0 ? (
-          <div className="max-w-3xl mx-auto space-y-4">
-            {posts.map((post) => (
-              <div key={post.id} className="glass-card p-6">
-                {post.event_title && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                      Event
-                    </span>
-                    <h3 className="font-semibold text-slate-900 dark:text-white">
-                      {post.event_title}
-                    </h3>
-                  </div>
-                )}
-                <p className="text-slate-600 dark:text-slate-300 mb-3">{post.text}</p>
-                <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-                  <div className="flex items-center gap-4">
-                    {post.likes_count > 0 && (
-                      <span className="flex items-center gap-1">
-                        <ThumbsUp size={14} />
-                        {post.likes_count}
-                      </span>
-                    )}
-                    {post.published_at && (
-                      <span className="flex items-center gap-1">
-                        <Calendar size={14} />
-                        {new Date(post.published_at).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                  {post.event_url && (
-                    <a
-                      href={post.event_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      View <ExternalLink size={14} />
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <Linkedin size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-            <p className="text-slate-500 dark:text-slate-400">
-              No LinkedIn posts available at the moment.
-            </p>
-            <a
-              href={PROFILE.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 mt-4 text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              <Linkedin size={16} />
-              Visit LinkedIn Profile
-            </a>
-          </div>
-        )}
-      </Section>
-
       {/* ═══ EDUCATION ═══ */}
       <Section id="education" className="bg-slate-50/50 dark:bg-slate-900/50">
         <SectionHeader title="Education" subtitle="Academic background" />
@@ -654,7 +621,10 @@ export default function PortfolioPage() {
           {education.map((edu, idx) => (
             <div key={idx} className="glass-card p-6 flex items-start gap-5">
               <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20">
-                <GraduationCap size={28} className="text-blue-600 dark:text-blue-400" />
+                <GraduationCap
+                  size={28}
+                  className="text-blue-600 dark:text-blue-400"
+                />
               </div>
               <div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">
@@ -663,7 +633,9 @@ export default function PortfolioPage() {
                 <p className="text-blue-600 dark:text-blue-400 font-medium">
                   {edu.specialization}
                 </p>
-                <p className="text-slate-600 dark:text-slate-300 mt-1">{edu.school}</p>
+                <p className="text-slate-600 dark:text-slate-300 mt-1">
+                  {edu.school}
+                </p>
                 <span className="inline-flex items-center gap-1.5 mt-2 text-sm text-slate-500 dark:text-slate-400">
                   <Calendar size={14} />
                   {edu.year}

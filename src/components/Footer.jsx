@@ -1,5 +1,5 @@
-import { Heart, Mail } from 'lucide-react';
-import { GithubIcon as Github, LinkedinIcon as Linkedin } from './BrandIcons';
+import { Heart, Mail } from "lucide-react";
+import { GithubIcon as Github, LinkedinIcon as Linkedin } from "./BrandIcons";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -30,7 +30,7 @@ export default function Footer() {
               Quick Links
             </h3>
             <ul className="space-y-2">
-              {['About', 'Skills', 'Experience', 'Projects', 'Education'].map(
+              {["About", "Skills", "Experience", "Projects", "Education"].map(
                 (item) => (
                   <li key={item}>
                     <a
@@ -40,7 +40,7 @@ export default function Footer() {
                       {item}
                     </a>
                   </li>
-                )
+                ),
               )}
             </ul>
           </div>
