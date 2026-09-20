@@ -1,17 +1,20 @@
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
 # Personal_Website_FE
+
+Personal Portfolio and Admin Management Dashboard frontend built with **React 19**, **TypeScript**, **Vite**, **Tailwind CSS**, and **Oxlint**.
+
+## Tech Stack
+
+- **React 19**
+- **TypeScript** (Strict Mode & Type Checking)
+- **Vite** (Blazing Fast HMR & Build)
+- **Tailwind CSS** (Modern Styling)
+- **Oxlint** (High-Performance Linter with React & TypeScript rules)
+- **Axios** (API Client with JWT Interceptors)
+- **React Router v7** (Client Routing & Protected Routes)
+
+## Available Scripts
+
+- `npm run dev`: Starts the local development server.
+- `npm run build`: Runs type-checking (`tsc -b`) and generates production bundle (`vite build`).
+- `npm run lint`: Runs Oxlint across the codebase.
+- `npm run preview`: Previews the production build locally.

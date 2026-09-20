@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import {
-  Sun,
-  Moon,
   Menu,
   X,
   Shield,
@@ -13,7 +10,12 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const navLinks = [
+interface NavLinkItem {
+  href: string;
+  label: string;
+}
+
+const navLinks: NavLinkItem[] = [
   { href: "#about", label: "About" },
   { href: "#skills", label: "Skills" },
   { href: "#experience", label: "Experience" },
@@ -22,7 +24,6 @@ const navLinks = [
 ];
 
 export default function Navbar() {
-  const { darkMode, toggleDarkMode } = useTheme();
   const { isAuthenticated, isAdmin, user, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

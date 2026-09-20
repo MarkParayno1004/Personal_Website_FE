@@ -1,17 +1,13 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import client from "../api/client";
 import {
   MapPin,
   Mail,
   Phone,
   Download,
-  ExternalLink,
   Star,
   GitFork,
-  Search,
-  Filter,
   Calendar,
-  Briefcase,
   GraduationCap,
   Code2,
   Layers,
@@ -19,16 +15,23 @@ import {
   Cloud,
   Users,
   ChevronRight,
-  ThumbsUp,
   ArrowUpRight,
 } from "lucide-react";
 import {
   GithubIcon as Github,
   LinkedinIcon as Linkedin,
 } from "../components/BrandIcons";
+import type {
+  PortfolioProfile,
+  SkillCategory,
+  ExperienceItem,
+  EducationItem,
+  GitHubRepo,
+  PortfolioConfig,
+} from "../types";
 
 /* ─── Static data (fallback when API is unavailable) ─── */
-const PROFILE = {
+const PROFILE: PortfolioProfile = {
   name: "Mark Philip V. Parayno",
   headline: "Software Engineer | Mobile & Web Applications",
   location: "San Juan City, Philippines",
@@ -40,7 +43,7 @@ const PROFILE = {
     "Results-driven Software Engineer with hands-on production experience building mobile and web applications for a large retail enterprise. Skilled across Flutter, Svelte, React, Django, and Laravel with a passion for clean architecture, performance optimization, and modern developer tooling.",
 };
 
-const SKILLS = [
+const SKILLS: SkillCategory[] = [
   {
     category: "Languages",
     icon: Code2,
@@ -90,7 +93,7 @@ const SKILLS = [
   },
 ];
 
-const EXPERIENCE = [
+const EXPERIENCE: ExperienceItem[] = [
   {
     title: "Software Specialist",
     company: "Shopping Center Management Corporation (SM Prime Holdings, Inc.)",
@@ -125,7 +128,7 @@ const EXPERIENCE = [
   },
 ];
 
-const EDUCATION = [
+const EDUCATION: EducationItem[] = [
   {
     degree: "B.S. Information Technology",
     specialization: "Mobile & Web Application",
@@ -135,7 +138,10 @@ const EDUCATION = [
   },
 ];
 
-const colorMap = {
+const colorMap: Record<
+  string,
+  { bg: string; text: string; border: string; badge: string }
+> = {
   blue: {
     bg: "bg-blue-50 dark:bg-blue-900/20",
     text: "text-blue-600 dark:text-blue-400",
@@ -178,7 +184,7 @@ const colorMap = {
 };
 
 /* ─── Language color badges ─── */
-const langColors = {
+const langColors: Record<string, string> = {
   JavaScript: "#f7df1e",
   TypeScript: "#3178c6",
   Python: "#3572a5",
@@ -200,7 +206,15 @@ const langColors = {
 };
 
 /* ─── Section wrapper ─── */
-function Section({ id, children, className = "" }) {
+function Section({
+  id,
+  children,
+  className = "",
+}: {
+  id?: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <section id={id} className={`py-20 ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
@@ -208,7 +222,13 @@ function Section({ id, children, className = "" }) {
   );
 }
 
-function SectionHeader({ title, subtitle }) {
+function SectionHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
   return (
     <div className="text-center mb-14">
       <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-3">
@@ -225,11 +245,9 @@ function SectionHeader({ title, subtitle }) {
 }
 
 export default function PortfolioPage() {
-  const [repos, setRepos] = useState([]);
-  const [repoSearch, setRepoSearch] = useState("");
-  const [langFilter, setLangFilter] = useState("");
+  const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(true);
-  const [config, setConfig] = useState(null);
+  const [config, setConfig] = useState<PortfolioConfig | null>(null);
 
   useEffect(() => {
     // Fetch portfolio config
@@ -238,17 +256,28 @@ export default function PortfolioPage() {
       .then((res) => setConfig(res.data))
       .catch(() => {});
 
-    //Fetch GitHub repos
+    // Fetch GitHub repos
     client
       .get("/github/repos", {
         params: { username: "MarkParayno1004", limit: 10 },
       })
-      .then((res) => setRepos(res.data))
+      .then((res) => {
+        const repoList: GitHubRepo[] = (res.data || []).map((r: Record<string, unknown>) => ({
+          id: Number(r.id),
+          name: String(r.name || ""),
+          html_url: String(r.html_url || ""),
+          description: r.description ? String(r.description) : null,
+          language: r.language ? String(r.language) : null,
+          stars: typeof r.stars === "number" ? r.stars : Number(r.stargazers_count || 0),
+          forks: typeof r.forks === "number" ? r.forks : Number(r.forks_count || 0),
+        }));
+        setRepos(repoList);
+      })
       .catch(() => {})
       .finally(() => setLoadingRepos(false));
   }, []);
 
-  const profile = useMemo(() => {
+  const profile: PortfolioProfile = useMemo(() => {
     if (!config) return PROFILE;
     return {
       name: config.full_name || config.name || PROFILE.name,
@@ -266,11 +295,14 @@ export default function PortfolioPage() {
     };
   }, [config]);
 
-  const skills = useMemo(() => {
+  const skills: SkillCategory[] = useMemo(() => {
     if (!config?.skills) return SKILLS;
     if (Array.isArray(config.skills)) return config.skills;
     if (typeof config.skills === "object") {
-      const skillCategoryMeta = {
+      const skillCategoryMeta: Record<
+        string,
+        { icon: typeof Code2; color: string }
+      > = {
         Languages: { icon: Code2, color: "blue" },
         Frontend: { icon: Layers, color: "purple" },
         Backend: { icon: Database, color: "green" },
@@ -288,7 +320,7 @@ export default function PortfolioPage() {
     return SKILLS;
   }, [config]);
 
-  const experience = useMemo(() => {
+  const experience: ExperienceItem[] = useMemo(() => {
     if (
       !config?.experience ||
       !Array.isArray(config.experience) ||
@@ -306,7 +338,7 @@ export default function PortfolioPage() {
     }));
   }, [config]);
 
-  const education = useMemo(() => {
+  const education: EducationItem[] = useMemo(() => {
     if (
       !config?.education ||
       !Array.isArray(config.education) ||
@@ -323,16 +355,8 @@ export default function PortfolioPage() {
     }));
   }, [config]);
 
-  /* ─── Repo filtering ─── */
-  const languages = [...new Set(repos.map((r) => r.language).filter(Boolean))];
-  const filteredRepos = repos.filter((r) => {
-    const matchSearch =
-      !repoSearch ||
-      r.name.toLowerCase().includes(repoSearch.toLowerCase()) ||
-      r.description?.toLowerCase().includes(repoSearch.toLowerCase());
-    const matchLang = !langFilter || r.language === langFilter;
-    return matchSearch && matchLang;
-  });
+  /* ─── Repos ─── */
+  const filteredRepos = repos;
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950">
@@ -578,11 +602,11 @@ export default function PortfolioPage() {
                   )}
                   <span className="flex items-center gap-1">
                     <Star size={14} />
-                    {repo.stars}
+                    {repo.stars || 0}
                   </span>
                   <span className="flex items-center gap-1">
                     <GitFork size={14} />
-                    {repo.forks}
+                    {repo.forks || 0}
                   </span>
                 </div>
               </a>

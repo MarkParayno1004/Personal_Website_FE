@@ -1,6 +1,12 @@
 /* Inline brand icon SVG components — Lucide dropped brand icons in v1+ */
+import type { SVGProps } from 'react';
 
-export function GithubIcon({ size = 24, className = '', ...props }) {
+export interface IconProps extends SVGProps<SVGSVGElement> {
+  size?: number;
+  className?: string;
+}
+
+export function GithubIcon({ size = 24, className = '', ...props }: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -16,7 +22,7 @@ export function GithubIcon({ size = 24, className = '', ...props }) {
   );
 }
 
-export function LinkedinIcon({ size = 24, className = '', ...props }) {
+export function LinkedinIcon({ size = 24, className = '', ...props }: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

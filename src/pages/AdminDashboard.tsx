@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ComponentType } from "react";
 import client from "../api/client";
 import toast from "react-hot-toast";
 import {
@@ -7,25 +7,33 @@ import {
   Receipt,
   Pill,
   Users,
-  TrendingUp,
   DollarSign,
-  Activity,
-  UserCheck,
   Loader2,
   Plus,
   Trash2,
   Edit3,
   Save,
   X,
-  ChevronRight,
   ArrowRight,
   ShieldCheck,
   ShieldOff,
   RefreshCw,
 } from "lucide-react";
+import type {
+  DashboardStats,
+  ExpenseSheet,
+  Medication,
+  AdminUser,
+} from "../types";
+
+interface TabItem {
+  id: string;
+  label: string;
+  icon: ComponentType<{ size?: number; className?: string }>;
+}
 
 /* ─── Tab definitions ─── */
-const TABS = [
+const TABS: TabItem[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "portfolio", label: "Portfolio Config", icon: Palette },
   { id: "expenses", label: "Expenses", icon: Receipt },
@@ -36,8 +44,8 @@ const TABS = [
 /* ═══════════════════════════════════════════════
    OVERVIEW TAB
    ═══════════════════════════════════════════════ */
-function OverviewTab({ onNavigate }) {
-  const [stats, setStats] = useState(null);
+function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -77,7 +85,7 @@ function OverviewTab({ onNavigate }) {
       ]
     : [];
 
-  const colorClasses = {
+  const colorClasses: Record<string, string> = {
     blue: "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400",
     green:
       "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
@@ -110,7 +118,7 @@ function OverviewTab({ onNavigate }) {
             return (
               <div key={card.label} className="glass-card p-6">
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${colorClasses[card.color]}`}
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${colorClasses[card.color] || colorClasses.blue}`}
                 >
                   <Icon size={24} />
                 </div>
@@ -182,14 +190,24 @@ function OverviewTab({ onNavigate }) {
   );
 }
 
+interface PortfolioConfigForm {
+  full_name: string;
+  headline: string;
+  location: string;
+  email: string;
+  phone: string;
+  linkedin_url: string;
+  github_username: string;
+  summary: string;
+}
+
 /* ═══════════════════════════════════════════════
    PORTFOLIO CONFIG TAB
    ═══════════════════════════════════════════════ */
 function PortfolioConfigTab() {
-  const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PortfolioConfigForm>({
     full_name: "",
     headline: "",
     location: "",
@@ -205,7 +223,6 @@ function PortfolioConfigTab() {
     client
       .get("/portfolio/config")
       .then((res) => {
-        setConfig(res.data);
         setForm({
           full_name: res.data.full_name || res.data.name || "",
           headline: res.data.headline || "",
@@ -246,6 +263,16 @@ function PortfolioConfigTab() {
     );
   }
 
+  const formFields: Array<{ key: keyof PortfolioConfigForm; label: string; type: string }> = [
+    { key: "full_name", label: "Full Name", type: "text" },
+    { key: "headline", label: "Headline", type: "text" },
+    { key: "location", label: "Location", type: "text" },
+    { key: "email", label: "Email", type: "email" },
+    { key: "phone", label: "Phone", type: "tel" },
+    { key: "linkedin_url", label: "LinkedIn URL", type: "url" },
+    { key: "github_username", label: "GitHub Username", type: "text" },
+  ];
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -274,19 +301,7 @@ function PortfolioConfigTab() {
               Basic Information
             </h3>
             <div className="space-y-4">
-              {[
-                { key: "full_name", label: "Full Name", type: "text" },
-                { key: "headline", label: "Headline", type: "text" },
-                { key: "location", label: "Location", type: "text" },
-                { key: "email", label: "Email", type: "email" },
-                { key: "phone", label: "Phone", type: "tel" },
-                { key: "linkedin_url", label: "LinkedIn URL", type: "url" },
-                {
-                  key: "github_username",
-                  label: "GitHub Username",
-                  type: "text",
-                },
-              ].map((field) => (
+              {formFields.map((field) => (
                 <div key={field.key}>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     {field.label}
@@ -355,15 +370,27 @@ function PortfolioConfigTab() {
   );
 }
 
+interface ExpenseFormItem {
+  description: string;
+  amount: string;
+}
+
+interface ExpenseFormData {
+  title: string;
+  gross_income: string;
+  items: ExpenseFormItem[];
+  tax_deductions: ExpenseFormItem[];
+}
+
 /* ═══════════════════════════════════════════════
    EXPENSES TAB
    ═══════════════════════════════════════════════ */
 function ExpensesTab() {
-  const [sheets, setSheets] = useState([]);
+  const [sheets, setSheets] = useState<ExpenseSheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editSheet, setEditSheet] = useState(null);
-  const [formData, setFormData] = useState({
+  const [editSheet, setEditSheet] = useState<ExpenseSheet | null>(null);
+  const [formData, setFormData] = useState<ExpenseFormData>({
     title: "",
     gross_income: "",
     items: [{ description: "", amount: "" }],
@@ -394,21 +421,21 @@ function ExpensesTab() {
     setShowModal(true);
   };
 
-  const openEdit = (sheet) => {
+  const openEdit = (sheet: ExpenseSheet) => {
     setEditSheet(sheet);
     setFormData({
       title: sheet.title || "",
-      gross_income: sheet.gross_income || "",
+      gross_income: String(sheet.gross_income || ""),
       items: sheet.items?.length
         ? sheet.items.map((i) => ({
             description: i.description,
-            amount: i.amount,
+            amount: String(i.amount),
           }))
         : [{ description: "", amount: "" }],
       tax_deductions: sheet.tax_deductions?.length
         ? sheet.tax_deductions.map((d) => ({
             description: d.description,
-            amount: d.amount,
+            amount: String(d.amount),
           }))
         : [{ description: "", amount: "" }],
     });
@@ -450,7 +477,7 @@ function ExpensesTab() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this expense sheet?")) return;
     try {
       await client.delete(`/expenses/${id}`);
@@ -461,21 +488,26 @@ function ExpensesTab() {
     }
   };
 
-  const addItem = (type) => {
+  const addItem = (type: "items" | "tax_deductions") => {
     setFormData((f) => ({
       ...f,
       [type]: [...f[type], { description: "", amount: "" }],
     }));
   };
 
-  const removeItem = (type, idx) => {
+  const removeItem = (type: "items" | "tax_deductions", idx: number) => {
     setFormData((f) => ({
       ...f,
       [type]: f[type].filter((_, i) => i !== idx),
     }));
   };
 
-  const updateItem = (type, idx, field, value) => {
+  const updateItem = (
+    type: "items" | "tax_deductions",
+    idx: number,
+    field: "description" | "amount",
+    value: string,
+  ) => {
     setFormData((f) => ({
       ...f,
       [type]: f[type].map((item, i) =>
@@ -739,10 +771,10 @@ function ExpensesTab() {
    MEDICATIONS TAB
    ═══════════════════════════════════════════════ */
 function MedicationsTab() {
-  const [meds, setMeds] = useState([]);
+  const [meds, setMeds] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editMed, setEditMed] = useState(null);
+  const [editMed, setEditMed] = useState<Medication | null>(null);
   const [form, setForm] = useState({ name: "", cost: "", doses_taken: "0" });
 
   const fetchMeds = useCallback(() => {
@@ -764,7 +796,7 @@ function MedicationsTab() {
     setShowModal(true);
   };
 
-  const openEdit = (med) => {
+  const openEdit = (med: Medication) => {
     setEditMed(med);
     setForm({
       name: med.name,
@@ -795,7 +827,7 @@ function MedicationsTab() {
     }
   };
 
-  const handleTakeDose = async (id) => {
+  const handleTakeDose = async (id: number) => {
     try {
       await client.post(`/medications/${id}/take`, { doses: 1 });
       toast.success("+1 dose logged!");
@@ -805,7 +837,7 @@ function MedicationsTab() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => {
     if (!confirm("Delete this medication?")) return;
     try {
       await client.delete(`/medications/${id}`);
@@ -984,7 +1016,7 @@ function MedicationsTab() {
    USERS TAB
    ═══════════════════════════════════════════════ */
 function UsersTab() {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchUsers = useCallback(() => {
@@ -1000,7 +1032,7 @@ function UsersTab() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const toggleRole = async (userId, currentAdmin) => {
+  const toggleRole = async (userId: number | string, currentAdmin: boolean) => {
     try {
       await client.patch(`/admin/users/${userId}/role`, {
         admin: !currentAdmin,

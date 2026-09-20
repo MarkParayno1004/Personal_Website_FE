@@ -1,30 +1,31 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import type { User, AuthContextType } from '../types';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('token');
+  });
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem('token');
+  const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('user');
-    if (savedToken && savedUser) {
+    if (savedUser) {
       try {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+        return JSON.parse(savedUser);
       } catch {
-        localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
       }
     }
-    setLoading(false);
-  }, []);
+    return null;
+  });
 
-  const login = useCallback(async (email, password) => {
+  const [loading] = useState<boolean>(false);
+
+  const login = useCallback(async (email: string, password: string): Promise<User> => {
     try {
       const res = await client.post('/login/', { email, password });
       const { token: jwt, ...userData } = res.data;
@@ -34,9 +35,10 @@ export function AuthProvider({ children }) {
       localStorage.setItem('user', JSON.stringify(userData));
       toast.success(`Welcome back, ${userData.first_name}!`);
       return userData;
-    } catch (err) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { detail?: string } } };
       const msg =
-        err.response?.data?.detail || 'Login failed. Please check your credentials.';
+        errorObj.response?.data?.detail || 'Login failed. Please check your credentials.';
       toast.error(msg);
       throw err;
     }
@@ -62,7 +64,7 @@ export function AuthProvider({ children }) {
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
