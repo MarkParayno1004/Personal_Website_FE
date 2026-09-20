@@ -1,11 +1,11 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Shield, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/useAuth";
+import { Shield, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -17,9 +17,9 @@ export default function AdminLogin() {
     try {
       const user = await login(email, password);
       if (user.admin) {
-        navigate('/admin');
+        navigate("/admin");
       } else {
-        navigate('/');
+        navigate("/");
       }
     } catch {
       // Error toast is handled in AuthContext
@@ -29,7 +29,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 px-4">
       {/* Background decorations */}
       <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
@@ -38,12 +38,10 @@ export default function AdminLogin() {
         <div className="glass-card p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
               <Shield size={30} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white">
-              Admin Portal
-            </h1>
+            <h1 className="text-2xl font-bold text-white">Admin Portal</h1>
             <p className="text-slate-400 mt-1">
               Sign in to manage your portfolio
             </p>
@@ -81,7 +79,7 @@ export default function AdminLogin() {
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                 />
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -101,7 +99,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -109,7 +107,7 @@ export default function AdminLogin() {
                   Signing in...
                 </>
               ) : (
-                'Sign In'
+                "Sign In"
               )}
             </button>
           </form>

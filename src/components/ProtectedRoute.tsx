@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -13,7 +13,7 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <Loader2 size={40} className="animate-spin text-blue-500" />
       </div>
     );

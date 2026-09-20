@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/useAuth";
 import {
   Menu,
   X,
@@ -28,14 +28,19 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
-  const isAdminPage = location.pathname.startsWith("/admin");
+  const isAdminPage = window.location.pathname.startsWith("/admin");
 
   const handleLogout = () => {
     logout();
     setUserMenuOpen(false);
+    setMobileMenuOpen(false);
     navigate("/");
+  };
+
+  const closeMenus = () => {
+    setMobileMenuOpen(false);
+    setUserMenuOpen(false);
   };
 
   useEffect(() => {
@@ -43,11 +48,6 @@ export default function Navbar() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  useEffect(() => {
-    setMobileMenuOpen(false);
-    setUserMenuOpen(false);
-  }, [location.pathname]);
 
   return (
     <nav
@@ -62,6 +62,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link
             to="/"
+            onClick={closeMenus}
             className="flex items-center gap-2 text-xl font-bold text-white hover:text-blue-400 transition-colors"
           >
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-md shadow-blue-500/20">
@@ -89,7 +90,7 @@ export default function Navbar() {
           {isAuthenticated && isAdmin && (
             <div className="relative">
               <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                onClick={() => setUserMenuOpen((prev) => !prev)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-900/20 text-blue-300 hover:bg-blue-900/30 border border-blue-800/40 transition-all duration-200"
               >
                 <User size={16} />
@@ -103,6 +104,7 @@ export default function Navbar() {
                   {!isAdminPage && (
                     <Link
                       to="/admin"
+                      onClick={closeMenus}
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50"
                     >
                       <Shield size={16} />
@@ -112,6 +114,7 @@ export default function Navbar() {
                   {isAdminPage && (
                     <Link
                       to="/"
+                      onClick={closeMenus}
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50"
                     >
                       <User size={16} />
@@ -133,7 +136,7 @@ export default function Navbar() {
           {/* Mobile Menu Toggle */}
           {!isAdminPage && (
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
               className="md:hidden p-2 rounded-lg text-slate-300 hover:bg-slate-800 transition-all"
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -150,7 +153,7 @@ export default function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={closeMenus}
                 className="block px-3 py-2.5 text-sm font-medium text-slate-300 hover:text-blue-400 rounded-lg hover:bg-slate-800/50 transition-all"
               >
                 {link.label}

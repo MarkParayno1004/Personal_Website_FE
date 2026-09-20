@@ -94,9 +94,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-white mb-6">
-        Dashboard Overview
-      </h2>
+      <h2 className="text-2xl font-bold text-white mb-6">Dashboard Overview</h2>
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -119,9 +117,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
                 >
                   <Icon size={24} />
                 </div>
-                <p className="text-sm text-slate-400">
-                  {card.label}
-                </p>
+                <p className="text-sm text-slate-400">{card.label}</p>
                 <p className="text-2xl font-bold text-white mt-1">
                   {card.value}
                 </p>
@@ -133,9 +129,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
 
       {/* Quick Actions */}
       <div className="mt-10">
-        <h3 className="text-lg font-semibold text-white mb-4">
-          Quick Actions
-        </h3>
+        <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             {
@@ -164,16 +158,11 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
                 onClick={() => onNavigate(action.tab)}
                 className="glass-card p-5 text-left group"
               >
-                <Icon
-                  size={24}
-                  className="text-blue-400 mb-3"
-                />
+                <Icon size={24} className="text-blue-400 mb-3" />
                 <h4 className="font-semibold text-white group-hover:text-blue-400 transition-colors">
                   {action.label}
                 </h4>
-                <p className="text-sm text-slate-400 mt-1">
-                  {action.desc}
-                </p>
+                <p className="text-sm text-slate-400 mt-1">{action.desc}</p>
                 <ArrowRight
                   size={16}
                   className="mt-3 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all"
@@ -216,7 +205,6 @@ function PortfolioConfigTab() {
   });
 
   const fetchConfig = useCallback(() => {
-    setLoading(true);
     client
       .get("/portfolio/config")
       .then((res) => {
@@ -260,7 +248,11 @@ function PortfolioConfigTab() {
     );
   }
 
-  const formFields: Array<{ key: keyof PortfolioConfigForm; label: string; type: string }> = [
+  const formFields: Array<{
+    key: keyof PortfolioConfigForm;
+    label: string;
+    type: string;
+  }> = [
     { key: "full_name", label: "Full Name", type: "text" },
     { key: "headline", label: "Headline", type: "text" },
     { key: "location", label: "Location", type: "text" },
@@ -337,7 +329,7 @@ function PortfolioConfigTab() {
           </h3>
           <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-6">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
                 {(form.full_name || "MP")
                   .split(" ")
                   .map((n) => n[0])
@@ -350,12 +342,8 @@ function PortfolioConfigTab() {
               <p className="text-blue-400 font-medium mt-1">
                 {form.headline || "Your Headline"}
               </p>
-              <p className="text-sm text-slate-400 mt-2">
-                {form.location}
-              </p>
-              <p className="text-sm text-slate-400">
-                {form.email}
-              </p>
+              <p className="text-sm text-slate-400 mt-2">{form.location}</p>
+              <p className="text-sm text-slate-400">{form.email}</p>
               <p className="text-sm text-slate-300 mt-4 text-left">
                 {form.summary || "Your bio summary will appear here..."}
               </p>
@@ -395,7 +383,6 @@ function ExpensesTab() {
   });
 
   const fetchSheets = useCallback(() => {
-    setLoading(true);
     client
       .get("/expenses/")
       .then((res) => setSheets(res.data))
@@ -516,9 +503,7 @@ function ExpensesTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">
-          Expense Tracker
-        </h2>
+        <h2 className="text-2xl font-bold text-white">Expense Tracker</h2>
         <button
           onClick={openCreate}
           className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25"
@@ -534,10 +519,7 @@ function ExpensesTab() {
         </div>
       ) : sheets.length === 0 ? (
         <div className="text-center py-20">
-          <Receipt
-            size={48}
-            className="mx-auto text-slate-600 mb-4"
-          />
+          <Receipt size={48} className="mx-auto text-slate-600 mb-4" />
           <p className="text-slate-400">
             No expense sheets yet. Create your first one!
           </p>
@@ -580,9 +562,7 @@ function ExpensesTab() {
                     key={item.label}
                     className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3"
                   >
-                    <p className="text-xs text-slate-400">
-                      {item.label}
-                    </p>
+                    <p className="text-xs text-slate-400">{item.label}</p>
                     <p className="text-lg font-bold text-white">
                       ₱{(item.value || 0).toLocaleString()}
                     </p>
@@ -775,7 +755,6 @@ function MedicationsTab() {
   const [form, setForm] = useState({ name: "", cost: "", doses_taken: "0" });
 
   const fetchMeds = useCallback(() => {
-    setLoading(true);
     client
       .get("/medications/")
       .then((res) => setMeds(res.data))
@@ -848,9 +827,7 @@ function MedicationsTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">
-          Medication Tracker
-        </h2>
+        <h2 className="text-2xl font-bold text-white">Medication Tracker</h2>
         <button
           onClick={openCreate}
           className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25"
@@ -866,13 +843,8 @@ function MedicationsTab() {
         </div>
       ) : meds.length === 0 ? (
         <div className="text-center py-20">
-          <Pill
-            size={48}
-            className="mx-auto text-slate-600 mb-4"
-          />
-          <p className="text-slate-400">
-            No medications tracked yet.
-          </p>
+          <Pill size={48} className="mx-auto text-slate-600 mb-4" />
+          <p className="text-slate-400">No medications tracked yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -904,17 +876,13 @@ function MedicationsTab() {
               </div>
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-400">
-                    Doses Taken
-                  </p>
+                  <p className="text-xs text-slate-400">Doses Taken</p>
                   <p className="text-2xl font-bold text-white">
                     {med.doses_taken}
                   </p>
                 </div>
                 <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-400">
-                    Total Spent
-                  </p>
+                  <p className="text-xs text-slate-400">Total Spent</p>
                   <p className="text-2xl font-bold text-emerald-400">
                     ₱
                     {(
@@ -1017,7 +985,6 @@ function UsersTab() {
   const [loading, setLoading] = useState(true);
 
   const fetchUsers = useCallback(() => {
-    setLoading(true);
     client
       .get("/admin/users")
       .then((res) => setUsers(res.data))
@@ -1044,9 +1011,7 @@ function UsersTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">
-          User Management
-        </h2>
+        <h2 className="text-2xl font-bold text-white">User Management</h2>
         <button
           onClick={fetchUsers}
           className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 rounded-xl transition-all"
@@ -1088,7 +1053,7 @@ function UsersTab() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
+                        <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
                           {(u.first_name?.[0] || "") + (u.last_name?.[0] || "")}
                         </div>
                         <span className="font-medium text-white">

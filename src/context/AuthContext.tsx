@@ -1,9 +1,8 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
-import type { User, AuthContextType } from '../types';
-
-const AuthContext = createContext<AuthContextType | null>(null);
+import type { User } from '../types';
+import { AuthContext } from './auth-context';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => {
@@ -23,7 +22,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   });
 
-  const [loading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(() => !!localStorage.getItem('token'));
+
+  useEffect(() => {
+    const verifySession = async () => {
+      const storedToken = localStorage.getItem('token');
+      if (!storedToken) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await client.get('/admin/stats');
+      } catch {
+        // Invalid, expired, or spoofed token
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    verifySession();
+  }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<User> => {
     try {
@@ -62,12 +85,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }
