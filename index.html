@@ -1,16 +1,139 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Mark Philip V. Parayno - Software Engineer Portfolio & Management Platform" />
-    <title>Mark Philip V. Parayno | Portfolio</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Primary SEO Meta Tags -->
+    <title>Mark Philip V. Parayno | Software Engineer | Full Stack, Mobile & Web Developer</title>
+    <meta name="title" content="Mark Philip V. Parayno | Software Engineer | Full Stack, Mobile & Web Developer" />
+    <meta
+      name="description"
+      content="Portfolio of Mark Philip V. Parayno - Software Engineer, Full Stack & Mobile Developer specializing in Flutter, Dart, React, TypeScript, Django, Laravel, and scalable cloud applications."
+    />
+    <meta
+      name="keywords"
+      content="Software Engineer, Full Stack Developer, Mobile Developer, Flutter Developer, Frontend Engineer, Backend Developer, Flutter, Dart, React, TypeScript, Django, Laravel, Python, PHP, Svelte, REST APIs, GraphQL, Mark Philip Parayno"
+    />
+    <meta name="author" content="Mark Philip V. Parayno" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+
+    <!-- Theme Color: Dark Mode Only -->
+    <meta name="theme-color" content="#020617" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- Open Graph / Facebook / LinkedIn / Discord -->
+    <meta property="og:type" content="profile" />
+    <meta property="og:site_name" content="Mark Philip V. Parayno Portfolio" />
+    <meta property="og:title" content="Mark Philip V. Parayno | Software Engineer | Full Stack & Mobile Developer" />
+    <meta
+      property="og:description"
+      content="Software Engineer & Mobile Developer specializing in Flutter, React, TypeScript, Django, and Laravel. Building production-ready mobile and web solutions."
+    />
+    <meta property="og:url" content="https://markparayno.dev/" />
+    <meta property="og:image" content="/favicon.svg" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="profile:first_name" content="Mark Philip" />
+    <meta property="profile:last_name" content="Parayno" />
+    <meta property="profile:username" content="MarkParayno1004" />
+
+    <!-- Twitter / X Cards -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Mark Philip V. Parayno | Software Engineer | Full Stack & Mobile Developer" />
+    <meta
+      name="twitter:description"
+      content="Software Engineer & Mobile Developer specializing in Flutter, React, TypeScript, Django, and Laravel."
+    />
+    <meta name="twitter:image" content="/favicon.svg" />
+
+    <!-- Preconnect Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Schema.org JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Person",
+          "@id": "https://markparayno.dev/#person",
+          "name": "Mark Philip V. Parayno",
+          "givenName": "Mark Philip",
+          "familyName": "Parayno",
+          "jobTitle": [
+            "Software Engineer",
+            "Full Stack Developer",
+            "Mobile Developer",
+            "Frontend Engineer",
+            "Backend Developer"
+          ],
+          "description": "Software Engineer & Mobile Developer specializing in Flutter, Dart, React, TypeScript, Django, Laravel, and cloud architectures.",
+          "url": "https://markparayno.dev/",
+          "sameAs": [
+            "https://github.com/MarkParayno1004",
+            "https://www.linkedin.com/in/mark-philip-parayno/"
+          ],
+          "knowsAbout": [
+            "Software Engineering",
+            "Full Stack Development",
+            "Mobile Application Development",
+            "Flutter",
+            "Dart",
+            "Frontend Development",
+            "React",
+            "TypeScript",
+            "JavaScript",
+            "Backend Development",
+            "Django",
+            "Python",
+            "Laravel",
+            "PHP",
+            "Svelte",
+            "REST APIs",
+            "GraphQL",
+            "PostgreSQL",
+            "MongoDB",
+            "AWS",
+            "CI/CD"
+          ],
+          "alumniOf": {
+            "@type": "EducationalOrganization",
+            "name": "National University Philippines"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://markparayno.dev/#website",
+          "url": "https://markparayno.dev/",
+          "name": "Mark Philip V. Parayno Portfolio",
+          "description": "Personal Portfolio and Platform for Mark Philip V. Parayno - Software Engineer, Full Stack & Mobile Developer.",
+          "publisher": {
+            "@id": "https://markparayno.dev/#person"
+          },
+          "inLanguage": "en-US"
+        },
+        {
+          "@type": "ProfilePage",
+          "@id": "https://markparayno.dev/#webpage",
+          "url": "https://markparayno.dev/",
+          "name": "Mark Philip V. Parayno | Software Engineer | Full Stack, Mobile & Web Developer",
+          "isPartOf": {
+            "@id": "https://markparayno.dev/#website"
+          },
+          "mainEntity": {
+            "@id": "https://markparayno.dev/#person"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
-  <body class="bg-white dark:bg-slate-950">
+  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-blue-500/30 selection:text-blue-200">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,0 +1,9 @@
+# Robots.txt for Mark Philip Parayno Portfolio
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin/*
+
+# Sitemap
+Sitemap: https://markparayno.dev/sitemap.xml

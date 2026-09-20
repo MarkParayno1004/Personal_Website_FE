@@ -18,11 +18,6 @@ export interface AuthContextType {
   logout: () => void;
 }
 
-export interface ThemeContextType {
-  darkMode: boolean;
-  toggleDarkMode: () => void;
-}
-
 export interface SkillCategory {
   category: string;
   icon: ComponentType<{ size?: number; className?: string }>;

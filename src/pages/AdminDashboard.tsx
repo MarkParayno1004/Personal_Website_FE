@@ -86,18 +86,15 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
     : [];
 
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400",
-    green:
-      "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
-    purple:
-      "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
-    amber:
-      "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400",
+    blue: "bg-blue-900/20 text-blue-400",
+    green: "bg-emerald-900/20 text-emerald-400",
+    purple: "bg-purple-900/20 text-purple-400",
+    amber: "bg-amber-900/20 text-amber-400",
   };
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
+      <h2 className="text-2xl font-bold text-white mb-6">
         Dashboard Overview
       </h2>
 
@@ -105,9 +102,9 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="glass-card p-6 animate-pulse">
-              <div className="h-10 w-10 bg-slate-200 dark:bg-slate-700 rounded-xl mb-3" />
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-2" />
-              <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-16" />
+              <div className="h-10 w-10 bg-slate-700 rounded-xl mb-3" />
+              <div className="h-4 bg-slate-700 rounded w-20 mb-2" />
+              <div className="h-6 bg-slate-700 rounded w-16" />
             </div>
           ))}
         </div>
@@ -122,10 +119,10 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
                 >
                   <Icon size={24} />
                 </div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-slate-400">
                   {card.label}
                 </p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-2xl font-bold text-white mt-1">
                   {card.value}
                 </p>
               </div>
@@ -136,7 +133,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
 
       {/* Quick Actions */}
       <div className="mt-10">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold text-white mb-4">
           Quick Actions
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -169,17 +166,17 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
               >
                 <Icon
                   size={24}
-                  className="text-blue-600 dark:text-blue-400 mb-3"
+                  className="text-blue-400 mb-3"
                 />
-                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <h4 className="font-semibold text-white group-hover:text-blue-400 transition-colors">
                   {action.label}
                 </h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-1">
                   {action.desc}
                 </p>
                 <ArrowRight
                   size={16}
-                  className="mt-3 text-slate-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"
+                  className="mt-3 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all"
                 />
               </button>
             );
@@ -276,7 +273,7 @@ function PortfolioConfigTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <h2 className="text-2xl font-bold text-white">
           Portfolio Configuration
         </h2>
         <button
@@ -297,13 +294,13 @@ function PortfolioConfigTab() {
         {/* Form */}
         <div className="space-y-5">
           <div className="glass-card p-6">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-white mb-4">
               Basic Information
             </h3>
             <div className="space-y-4">
               {formFields.map((field) => (
                 <div key={field.key}>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     {field.label}
                   </label>
                   <input
@@ -312,12 +309,12 @@ function PortfolioConfigTab() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, [field.key]: e.target.value }))
                     }
-                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white"
+                    className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-white placeholder:text-slate-500"
                   />
                 </div>
               ))}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Bio Summary
                 </label>
                 <textarea
@@ -326,7 +323,7 @@ function PortfolioConfigTab() {
                     setForm((f) => ({ ...f, summary: e.target.value }))
                   }
                   rows={4}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white resize-none"
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-white placeholder:text-slate-500 resize-none"
                 />
               </div>
             </div>
@@ -335,31 +332,31 @@ function PortfolioConfigTab() {
 
         {/* Live Preview */}
         <div className="glass-card p-6">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Live Preview
           </h3>
-          <div className="bg-linear-to-br from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 rounded-xl p-6">
+          <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-6">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
                 {(form.full_name || "MP")
                   .split(" ")
                   .map((n) => n[0])
                   .join("")
                   .slice(0, 2)}
               </div>
-              <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+              <h4 className="text-xl font-bold text-white">
                 {form.full_name || "Your Name"}
               </h4>
-              <p className="text-blue-600 dark:text-blue-400 font-medium mt-1">
+              <p className="text-blue-400 font-medium mt-1">
                 {form.headline || "Your Headline"}
               </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              <p className="text-sm text-slate-400 mt-2">
                 {form.location}
               </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-400">
                 {form.email}
               </p>
-              <p className="text-sm text-slate-600 dark:text-slate-300 mt-4 text-left">
+              <p className="text-sm text-slate-300 mt-4 text-left">
                 {form.summary || "Your bio summary will appear here..."}
               </p>
             </div>
@@ -519,7 +516,7 @@ function ExpensesTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <h2 className="text-2xl font-bold text-white">
           Expense Tracker
         </h2>
         <button
@@ -539,9 +536,9 @@ function ExpensesTab() {
         <div className="text-center py-20">
           <Receipt
             size={48}
-            className="mx-auto text-slate-300 dark:text-slate-600 mb-4"
+            className="mx-auto text-slate-600 mb-4"
           />
-          <p className="text-slate-500 dark:text-slate-400">
+          <p className="text-slate-400">
             No expense sheets yet. Create your first one!
           </p>
         </div>
@@ -550,19 +547,19 @@ function ExpensesTab() {
           {sheets.map((sheet) => (
             <div key={sheet.id} className="glass-card p-6">
               <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                <h3 className="text-lg font-semibold text-white">
                   {sheet.title || `Sheet #${sheet.id}`}
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openEdit(sheet)}
-                    className="p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
+                    className="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
                   >
                     <Edit3 size={16} />
                   </button>
                   <button
                     onClick={() => handleDelete(sheet.id)}
-                    className="p-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -581,12 +578,12 @@ function ExpensesTab() {
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3"
+                    className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3"
                   >
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-slate-400">
                       {item.label}
                     </p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    <p className="text-lg font-bold text-white">
                       ₱{(item.value || 0).toLocaleString()}
                     </p>
                   </div>
@@ -599,22 +596,22 @@ function ExpensesTab() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h3 className="text-lg font-bold text-white">
                 {editSheet ? "Edit Expense Sheet" : "New Expense Sheet"}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                className="p-2 rounded-lg hover:bg-slate-700 transition-all text-slate-400 hover:text-white"
               >
-                <X size={20} className="text-slate-500" />
+                <X size={20} />
               </button>
             </div>
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Title
                 </label>
                 <input
@@ -623,12 +620,12 @@ function ExpensesTab() {
                   onChange={(e) =>
                     setFormData((f) => ({ ...f, title: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-900 dark:text-white"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white placeholder:text-slate-500"
                   placeholder="Monthly Budget - September"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Gross Income
                 </label>
                 <input
@@ -637,7 +634,7 @@ function ExpensesTab() {
                   onChange={(e) =>
                     setFormData((f) => ({ ...f, gross_income: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-900 dark:text-white"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white placeholder:text-slate-500"
                   placeholder="0.00"
                 />
               </div>
@@ -645,13 +642,13 @@ function ExpensesTab() {
               {/* Tax Deductions */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <label className="text-sm font-medium text-slate-300">
                     Tax Deductions
                   </label>
                   <button
                     type="button"
                     onClick={() => addItem("tax_deductions")}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    className="text-sm text-blue-400 hover:underline flex items-center gap-1"
                   >
                     <Plus size={14} /> Add
                   </button>
@@ -670,7 +667,7 @@ function ExpensesTab() {
                           e.target.value,
                         )
                       }
-                      className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder:text-slate-500"
                     />
                     <input
                       type="number"
@@ -684,13 +681,13 @@ function ExpensesTab() {
                           e.target.value,
                         )
                       }
-                      className="w-28 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                      className="w-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder:text-slate-500"
                     />
                     {formData.tax_deductions.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeItem("tax_deductions", idx)}
-                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                        className="p-2 text-red-400 hover:bg-slate-700 rounded-lg"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -703,13 +700,13 @@ function ExpensesTab() {
               {!editSheet && (
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <label className="text-sm font-medium text-slate-300">
                       Expense Items
                     </label>
                     <button
                       type="button"
                       onClick={() => addItem("items")}
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                      className="text-sm text-blue-400 hover:underline flex items-center gap-1"
                     >
                       <Plus size={14} /> Add
                     </button>
@@ -728,7 +725,7 @@ function ExpensesTab() {
                             e.target.value,
                           )
                         }
-                        className="flex-1 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder:text-slate-500"
                       />
                       <input
                         type="number"
@@ -737,13 +734,13 @@ function ExpensesTab() {
                         onChange={(e) =>
                           updateItem("items", idx, "amount", e.target.value)
                         }
-                        className="w-28 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                        className="w-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder:text-slate-500"
                       />
                       {formData.items.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeItem("items", idx)}
-                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                          className="p-2 text-red-400 hover:bg-slate-700 rounded-lg"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -851,7 +848,7 @@ function MedicationsTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <h2 className="text-2xl font-bold text-white">
           Medication Tracker
         </h2>
         <button
@@ -871,9 +868,9 @@ function MedicationsTab() {
         <div className="text-center py-20">
           <Pill
             size={48}
-            className="mx-auto text-slate-300 dark:text-slate-600 mb-4"
+            className="mx-auto text-slate-600 mb-4"
           />
-          <p className="text-slate-500 dark:text-slate-400">
+          <p className="text-slate-400">
             No medications tracked yet.
           </p>
         </div>
@@ -883,42 +880,42 @@ function MedicationsTab() {
             <div key={med.id} className="glass-card p-6">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  <h3 className="text-lg font-semibold text-white">
                     {med.name}
                   </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-slate-400">
                     ₱{(med.cost || 0).toFixed(2)} per dose
                   </p>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => openEdit(med)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
                   >
                     <Edit3 size={14} />
                   </button>
                   <button
                     onClick={() => handleDelete(med.id)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
                   >
                     <Trash2 size={14} />
                   </button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-slate-400">
                     Doses Taken
                   </p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                  <p className="text-2xl font-bold text-white">
                     {med.doses_taken}
                   </p>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-slate-400">
                     Total Spent
                   </p>
-                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                  <p className="text-2xl font-bold text-emerald-400">
                     ₱
                     {(
                       med.total_spent ||
@@ -930,7 +927,7 @@ function MedicationsTab() {
               </div>
               <button
                 onClick={() => handleTakeDose(med.id)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 font-medium rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all"
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/30 border border-emerald-800/40 font-medium rounded-xl transition-all"
               >
                 <Plus size={16} />
                 +1 Take Dose
@@ -942,22 +939,22 @@ function MedicationsTab() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="border-b border-slate-700 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white">
                 {editMed ? "Edit Medication" : "Add Medication"}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
+                className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white"
               >
-                <X size={20} className="text-slate-500" />
+                <X size={20} />
               </button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Name
                 </label>
                 <input
@@ -966,12 +963,12 @@ function MedicationsTab() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, name: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder:text-slate-500"
                   placeholder="Medication name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Cost per dose (₱)
                 </label>
                 <input
@@ -980,12 +977,12 @@ function MedicationsTab() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, cost: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder:text-slate-500"
                   placeholder="0.00"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Initial Doses Taken
                 </label>
                 <input
@@ -994,7 +991,7 @@ function MedicationsTab() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, doses_taken: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder:text-slate-500"
                   placeholder="0"
                 />
               </div>
@@ -1047,12 +1044,12 @@ function UsersTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <h2 className="text-2xl font-bold text-white">
           User Management
         </h2>
         <button
           onClick={fetchUsers}
-          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 rounded-xl transition-all"
         >
           <RefreshCw size={16} />
           Refresh
@@ -1068,17 +1065,17 @@ function UsersTab() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left text-sm font-semibold text-slate-700 dark:text-slate-300 px-6 py-4">
+                <tr className="border-b border-slate-700">
+                  <th className="text-left text-sm font-semibold text-slate-300 px-6 py-4">
                     User
                   </th>
-                  <th className="text-left text-sm font-semibold text-slate-700 dark:text-slate-300 px-6 py-4">
+                  <th className="text-left text-sm font-semibold text-slate-300 px-6 py-4">
                     Email
                   </th>
-                  <th className="text-left text-sm font-semibold text-slate-700 dark:text-slate-300 px-6 py-4">
+                  <th className="text-left text-sm font-semibold text-slate-300 px-6 py-4">
                     Role
                   </th>
-                  <th className="text-right text-sm font-semibold text-slate-700 dark:text-slate-300 px-6 py-4">
+                  <th className="text-right text-sm font-semibold text-slate-300 px-6 py-4">
                     Actions
                   </th>
                 </tr>
@@ -1087,27 +1084,27 @@ function UsersTab() {
                 {users.map((u) => (
                   <tr
                     key={u.id}
-                    className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    className="border-b border-slate-800 last:border-0 hover:bg-slate-800/50 transition-colors"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
                           {(u.first_name?.[0] || "") + (u.last_name?.[0] || "")}
                         </div>
-                        <span className="font-medium text-slate-900 dark:text-white">
+                        <span className="font-medium text-white">
                           {u.first_name} {u.last_name}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
+                    <td className="px-6 py-4 text-sm text-slate-400">
                       {u.email}
                     </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
                           u.admin
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                            ? "bg-blue-900/30 text-blue-300 border border-blue-800/40"
+                            : "bg-slate-800 text-slate-400 border border-slate-700/50"
                         }`}
                       >
                         {u.admin ? (
@@ -1124,8 +1121,8 @@ function UsersTab() {
                         onClick={() => toggleRole(u.id, u.admin)}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                           u.admin
-                            ? "text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            : "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            ? "text-red-400 hover:bg-red-900/20"
+                            : "text-blue-400 hover:bg-blue-900/20"
                         }`}
                       >
                         {u.admin ? (
@@ -1174,7 +1171,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-20">
+    <div className="min-h-screen bg-slate-950 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tab Navigation */}
         <div className="flex overflow-x-auto gap-1 mb-8 pb-1 scrollbar-none">
@@ -1188,7 +1185,7 @@ export default function AdminDashboard() {
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                   isActive
                     ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
                 }`}
               >
                 <Icon size={18} />
