@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback, type ComponentType } from "react";
 import client from "../api/client";
+import { getCategories } from "../api/categories";
+import CategoriesOverview from "../components/categories/CategoriesOverview";
 import toast from "react-hot-toast";
 import {
   LayoutDashboard,
   Palette,
+  FolderTree,
   Receipt,
   Pill,
   Users,
@@ -24,6 +27,7 @@ import type {
   ExpenseSheet,
   Medication,
   AdminUser,
+  Category,
 } from "../types";
 
 interface TabItem {
@@ -36,6 +40,7 @@ interface TabItem {
 const TABS: TabItem[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "portfolio", label: "Portfolio Config", icon: Palette },
+  { id: "categories", label: "Categories", icon: FolderTree },
   { id: "expenses", label: "Expenses", icon: Receipt },
   { id: "medications", label: "Medications", icon: Pill },
   { id: "users", label: "Users", icon: Users },
@@ -130,13 +135,19 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
       {/* Quick Actions */}
       <div className="mt-10">
         <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
               label: "Portfolio Configurator",
               desc: "Edit your portfolio content",
               tab: "portfolio",
               icon: Palette,
+            },
+            {
+              label: "Category Manager",
+              desc: "Organize expenses & medications",
+              tab: "categories",
+              icon: FolderTree,
             },
             {
               label: "Expense Tracker",
@@ -363,6 +374,7 @@ interface ExpenseFormItem {
 interface ExpenseFormData {
   title: string;
   gross_income: string;
+  category_id?: string;
   items: ExpenseFormItem[];
   tax_deductions: ExpenseFormItem[];
 }
@@ -372,12 +384,14 @@ interface ExpenseFormData {
    ═══════════════════════════════════════════════ */
 function ExpensesTab() {
   const [sheets, setSheets] = useState<ExpenseSheet[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editSheet, setEditSheet] = useState<ExpenseSheet | null>(null);
   const [formData, setFormData] = useState<ExpenseFormData>({
     title: "",
     gross_income: "",
+    category_id: "",
     items: [{ description: "", amount: "" }],
     tax_deductions: [{ description: "", amount: "" }],
   });
@@ -390,15 +404,23 @@ function ExpensesTab() {
       .finally(() => setLoading(false));
   }, []);
 
+  const fetchCategoryList = useCallback(() => {
+    getCategories()
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetchSheets();
-  }, [fetchSheets]);
+    fetchCategoryList();
+  }, [fetchSheets, fetchCategoryList]);
 
   const openCreate = () => {
     setEditSheet(null);
     setFormData({
       title: "",
       gross_income: "",
+      category_id: "",
       items: [{ description: "", amount: "" }],
       tax_deductions: [{ description: "", amount: "" }],
     });
@@ -410,6 +432,7 @@ function ExpensesTab() {
     setFormData({
       title: sheet.title || "",
       gross_income: String(sheet.gross_income || ""),
+      category_id: sheet.category_id ? String(sheet.category_id) : "",
       items: sheet.items?.length
         ? sheet.items.map((i) => ({
             description: i.description,
@@ -428,15 +451,21 @@ function ExpensesTab() {
 
   const handleSave = async () => {
     try {
+      const category_id = formData.category_id
+        ? parseInt(formData.category_id, 10)
+        : null;
+
       if (editSheet) {
         await client.put(`/expenses/${editSheet.id}`, {
           title: formData.title,
           gross_income: parseFloat(formData.gross_income) || 0,
+          category_id,
         });
       } else {
         await client.post("/expenses/", {
           title: formData.title,
           gross_income: parseFloat(formData.gross_income) || 0,
+          category_id,
           items: formData.items
             .filter((i) => i.description)
             .map((i) => ({
@@ -526,51 +555,65 @@ function ExpensesTab() {
         </div>
       ) : (
         <div className="space-y-4">
-          {sheets.map((sheet) => (
-            <div key={sheet.id} className="glass-card p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-                <h3 className="text-lg font-semibold text-white">
-                  {sheet.title || `Sheet #${sheet.id}`}
-                </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => openEdit(sheet)}
-                    className="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
-                  >
-                    <Edit3 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(sheet.id)}
-                    className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+          {sheets.map((sheet) => {
+            const matchedCategory = categories.find(
+              (c) => c.id === sheet.category_id,
+            );
+
+            return (
+              <div key={sheet.id} className="glass-card p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-semibold text-white">
+                      {sheet.title || `Sheet #${sheet.id}`}
+                    </h3>
+                    {sheet.category_id && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900/30 text-blue-300 border border-blue-800/40">
+                        <FolderTree size={12} />
+                        {matchedCategory?.title || `Category #${sheet.category_id}`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEdit(sheet)}
+                      className="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(sheet.id)}
+                      className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {[
+                    { label: "Gross Income", value: sheet.gross_income },
+                    {
+                      label: "Tax Deductions",
+                      value: sheet.total_tax_deductions,
+                    },
+                    { label: "Net Income", value: sheet.net_income },
+                    { label: "Total Expenses", value: sheet.total_expenses },
+                    { label: "Remaining", value: sheet.remaining_income },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3"
+                    >
+                      <p className="text-xs text-slate-400">{item.label}</p>
+                      <p className="text-lg font-bold text-white">
+                        ₱{(item.value || 0).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {[
-                  { label: "Gross Income", value: sheet.gross_income },
-                  {
-                    label: "Tax Deductions",
-                    value: sheet.total_tax_deductions,
-                  },
-                  { label: "Net Income", value: sheet.net_income },
-                  { label: "Total Expenses", value: sheet.total_expenses },
-                  { label: "Remaining", value: sheet.remaining_income },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3"
-                  >
-                    <p className="text-xs text-slate-400">{item.label}</p>
-                    <p className="text-lg font-bold text-white">
-                      ₱{(item.value || 0).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -604,19 +647,40 @@ function ExpensesTab() {
                   placeholder="Monthly Budget - September"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Gross Income
-                </label>
-                <input
-                  type="number"
-                  value={formData.gross_income}
-                  onChange={(e) =>
-                    setFormData((f) => ({ ...f, gross_income: e.target.value }))
-                  }
-                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white placeholder:text-slate-500"
-                  placeholder="0.00"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    Gross Income (₱)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.gross_income}
+                    onChange={(e) =>
+                      setFormData((f) => ({ ...f, gross_income: e.target.value }))
+                    }
+                    className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white placeholder:text-slate-500"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    Category (Optional)
+                  </label>
+                  <select
+                    value={formData.category_id || ""}
+                    onChange={(e) =>
+                      setFormData((f) => ({ ...f, category_id: e.target.value }))
+                    }
+                    className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white"
+                  >
+                    <option value="">None / Uncategorized</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Tax Deductions */}
@@ -749,10 +813,16 @@ function ExpensesTab() {
    ═══════════════════════════════════════════════ */
 function MedicationsTab() {
   const [meds, setMeds] = useState<Medication[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editMed, setEditMed] = useState<Medication | null>(null);
-  const [form, setForm] = useState({ name: "", cost: "", doses_taken: "0" });
+  const [form, setForm] = useState({
+    name: "",
+    cost: "",
+    doses_taken: "0",
+    category_id: "",
+  });
 
   const fetchMeds = useCallback(() => {
     client
@@ -762,13 +832,20 @@ function MedicationsTab() {
       .finally(() => setLoading(false));
   }, []);
 
+  const fetchCategoryList = useCallback(() => {
+    getCategories()
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetchMeds();
-  }, [fetchMeds]);
+    fetchCategoryList();
+  }, [fetchMeds, fetchCategoryList]);
 
   const openCreate = () => {
     setEditMed(null);
-    setForm({ name: "", cost: "", doses_taken: "0" });
+    setForm({ name: "", cost: "", doses_taken: "0", category_id: "" });
     setShowModal(true);
   };
 
@@ -778,16 +855,22 @@ function MedicationsTab() {
       name: med.name,
       cost: String(med.cost),
       doses_taken: String(med.doses_taken),
+      category_id: med.category_id ? String(med.category_id) : "",
     });
     setShowModal(true);
   };
 
   const handleSave = async () => {
     try {
+      const category_id = form.category_id
+        ? parseInt(form.category_id, 10)
+        : null;
+
       const payload = {
         name: form.name,
         cost: parseFloat(form.cost) || 0,
         doses_taken: parseInt(form.doses_taken) || 0,
+        category_id,
       };
       if (editMed) {
         await client.put(`/medications/${editMed.id}`, payload);
@@ -848,60 +931,72 @@ function MedicationsTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {meds.map((med) => (
-            <div key={med.id} className="glass-card p-6">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">
-                    {med.name}
-                  </h3>
-                  <p className="text-sm text-slate-400">
-                    ₱{(med.cost || 0).toFixed(2)} per dose
-                  </p>
+          {meds.map((med) => {
+            const matchedCat = categories.find((c) => c.id === med.category_id);
+
+            return (
+              <div key={med.id} className="glass-card p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-white">
+                        {med.name}
+                      </h3>
+                      {med.category_id && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-900/30 text-purple-300 border border-purple-800/40">
+                          <FolderTree size={11} />
+                          {matchedCat?.title || `Category #${med.category_id}`}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-400">
+                      ₱{(med.cost || 0).toFixed(2)} per dose
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => openEdit(med)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
+                    >
+                      <Edit3 size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(med.id)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => openEdit(med)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
-                  >
-                    <Edit3 size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(med.id)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
+                    <p className="text-xs text-slate-400">Doses Taken</p>
+                    <p className="text-2xl font-bold text-white">
+                      {med.doses_taken}
+                    </p>
+                  </div>
+                  <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
+                    <p className="text-xs text-slate-400">Total Spent</p>
+                    <p className="text-2xl font-bold text-emerald-400">
+                      ₱
+                      {(
+                        med.total_spent ||
+                        med.cost * med.doses_taken ||
+                        0
+                      ).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => handleTakeDose(med.id)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/30 border border-emerald-800/40 font-medium rounded-xl transition-all"
+                >
+                  <Plus size={16} />
+                  +1 Take Dose
+                </button>
               </div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-400">Doses Taken</p>
-                  <p className="text-2xl font-bold text-white">
-                    {med.doses_taken}
-                  </p>
-                </div>
-                <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-400">Total Spent</p>
-                  <p className="text-2xl font-bold text-emerald-400">
-                    ₱
-                    {(
-                      med.total_spent ||
-                      med.cost * med.doses_taken ||
-                      0
-                    ).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => handleTakeDose(med.id)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/30 border border-emerald-800/40 font-medium rounded-xl transition-all"
-              >
-                <Plus size={16} />
-                +1 Take Dose
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -951,6 +1046,25 @@ function MedicationsTab() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Category (Optional)
+                </label>
+                <select
+                  value={form.category_id || ""}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, category_id: e.target.value }))
+                  }
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white"
+                >
+                  <option value="">None / Uncategorized</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Initial Doses Taken
                 </label>
                 <input
@@ -978,7 +1092,7 @@ function MedicationsTab() {
 }
 
 /* ═══════════════════════════════════════════════
-   USERS TAB
+   USER MANAGEMENT TAB
    ═══════════════════════════════════════════════ */
 function UsersTab() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -1124,6 +1238,8 @@ export default function AdminDashboard() {
         return <OverviewTab onNavigate={setActiveTab} />;
       case "portfolio":
         return <PortfolioConfigTab />;
+      case "categories":
+        return <CategoriesOverview embedded />;
       case "expenses":
         return <ExpensesTab />;
       case "medications":

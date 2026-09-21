@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import {
   Menu,
@@ -8,6 +8,7 @@ import {
   LogOut,
   User,
   ChevronDown,
+  FolderTree,
 } from "lucide-react";
 
 interface NavLinkItem {
@@ -29,7 +30,10 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const isAdminPage = window.location.pathname.startsWith("/admin");
+  const location = useLocation();
+  const isAdminPortal =
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/categories");
 
   const handleLogout = () => {
     logout();
@@ -68,11 +72,11 @@ export default function Navbar() {
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-md shadow-blue-500/20">
               MP
             </div>
-            {isAdminPage ? "Admin Portal" : "Mark Philip"}
+            {isAdminPortal ? "Admin Portal" : "Mark Philip"}
           </Link>
 
           {/* Desktop Nav Links */}
-          {!isAdminPage && (
+          {!isAdminPortal && (
             <div className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => (
                 <a
@@ -100,18 +104,24 @@ export default function Navbar() {
                 <ChevronDown size={14} />
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-xl shadow-xl border border-slate-700 py-1 animate-[slideDown_0.2s_ease-out]">
-                  {!isAdminPage && (
-                    <Link
-                      to="/admin"
-                      onClick={closeMenus}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50"
-                    >
-                      <Shield size={16} />
-                      Admin Dashboard
-                    </Link>
-                  )}
-                  {isAdminPage && (
+                <div className="absolute right-0 mt-2 w-52 bg-slate-800 rounded-xl shadow-xl border border-slate-700 py-1 animate-[slideDown_0.2s_ease-out]">
+                  <Link
+                    to="/admin"
+                    onClick={closeMenus}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50"
+                  >
+                    <Shield size={16} />
+                    Admin Dashboard
+                  </Link>
+                  <Link
+                    to="/categories"
+                    onClick={closeMenus}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50"
+                  >
+                    <FolderTree size={16} />
+                    Categories Manager
+                  </Link>
+                  {isAdminPortal && (
                     <Link
                       to="/"
                       onClick={closeMenus}
@@ -134,7 +144,7 @@ export default function Navbar() {
           )}
 
           {/* Mobile Menu Toggle */}
-          {!isAdminPage && (
+          {!isAdminPortal && (
             <button
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               className="md:hidden p-2 rounded-lg text-slate-300 hover:bg-slate-800 transition-all"
@@ -146,7 +156,7 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Menu */}
-      {mobileMenuOpen && !isAdminPage && (
+      {mobileMenuOpen && !isAdminPortal && (
         <div className="md:hidden bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 animate-[slideDown_0.2s_ease-out]">
           <div className="px-4 py-3 space-y-1">
             {navLinks.map((link) => (

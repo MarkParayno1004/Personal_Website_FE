@@ -117,17 +117,22 @@ export interface TaxDeduction {
   amount: number;
 }
 
-export interface ExpenseSheet {
+export interface Expense {
   id: number;
   title: string;
   gross_income: number;
-  total_tax_deductions?: number;
   net_income?: number;
+  total_tax_deductions?: number;
   total_expenses?: number;
+  total_amount?: number;
   remaining_income?: number;
+  category_id?: number | null;
   items?: ExpenseItem[];
   tax_deductions?: TaxDeduction[];
+  created_at?: string;
 }
+
+export type ExpenseSheet = Expense;
 
 export interface Medication {
   id: number;
@@ -135,6 +140,53 @@ export interface Medication {
   cost: number;
   doses_taken: number;
   total_spent?: number;
+  category_id?: number | null;
+  created_at?: string;
+}
+
+export interface Category {
+  id: number;
+  title: string;
+  user_id: number;
+  expenses: Expense[];
+  medications: Medication[];
+  total_expenses_amount: number;
+  total_medications_amount: number;
+  total_amount: number;
+  created_at: string;
+}
+
+export interface CreateCategoryPayload {
+  title: string;
+  expenses?: Array<{
+    title: string;
+    gross_income?: number;
+    net_income?: number;
+    items?: Array<{ description: string; amount: number }>;
+    tax_deductions?: Array<{ description: string; amount: number }>;
+  }>;
+  medications?: Array<{
+    name: string;
+    cost: number;
+    doses_taken?: number;
+  }>;
+}
+
+export interface UpdateCategoryPayload {
+  title?: string;
+}
+
+export interface CategoryExpenseCreatePayload {
+  title: string;
+  gross_income?: number;
+  items?: Array<{ description: string; amount: number }>;
+  tax_deductions?: Array<{ description: string; amount: number }>;
+}
+
+export interface CategoryMedicationCreatePayload {
+  name: string;
+  cost: number;
+  doses_taken?: number;
 }
 
 export interface AdminUser {
@@ -144,3 +196,4 @@ export interface AdminUser {
   last_name: string;
   admin: boolean;
 }
+

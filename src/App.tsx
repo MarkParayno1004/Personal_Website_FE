@@ -7,6 +7,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import PortfolioPage from './pages/PortfolioPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import CategoriesPage from './pages/CategoriesPage';
+import CategoryDetailPage from './pages/CategoryDetailPage';
 
 export default function App() {
   return (
@@ -36,6 +38,26 @@ export default function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Protected Categories Overview */}
+            <Route
+              path="/categories"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CategoriesPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Protected Category Details */}
+            <Route
+              path="/categories/:id"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CategoryDetailPage />
                 </ProtectedRoute>
               }
             />
