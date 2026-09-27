@@ -2,14 +2,15 @@
 
 @layer base {
   :root {
-    --color-primary: #3b82f6;
-    --color-primary-dark: #2563eb;
-    --color-accent: #8b5cf6;
-    --color-surface: #0f172a;
-    --color-surface-alt: #1e293b;
-    --color-text: #f1f5f9;
-    --color-text-secondary: #94a3b8;
-    --color-border: #334155;
+    --color-bg: #0a192f;
+    --color-surface: #112240;
+    --color-surface-alt: #1d3461;
+    --color-primary: #f59e0b;
+    --color-primary-dark: #d97706;
+    --color-secondary: #14b8a6;
+    --color-text: #e2e8f0;
+    --color-text-secondary: #8892b0;
+    --color-border: #233554;
     color-scheme: dark;
   }
 
@@ -22,32 +23,87 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #020617;
-    color: #f1f5f9;
+    background-color: #0a192f;
+    color: #e2e8f0;
+  }
+
+  ::selection {
+    background: rgba(245, 158, 11, 0.25);
+    color: #fef3c7;
   }
 }
 
 @layer components {
   .glass {
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(17, 34, 64, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(148, 163, 184, 0.1);
+    border: 1px solid rgba(35, 53, 84, 0.4);
   }
 
   .glass-card {
-    background: rgba(30, 41, 59, 0.7);
+    background: rgba(17, 34, 64, 0.6);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(51, 65, 85, 0.5);
+    border: 1px solid rgba(35, 53, 84, 0.5);
     border-radius: 1rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .glass-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    transform: translateY(-4px);
+    border-color: rgba(245, 158, 11, 0.2);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(245, 158, 11, 0.08);
+  }
+
+  /* Scroll-triggered section reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Staggered children reveal */
+  .reveal-children > * {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  }
+
+  .reveal-children.visible > * {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .reveal-children.visible > *:nth-child(1) { transition-delay: 0.05s; }
+  .reveal-children.visible > *:nth-child(2) { transition-delay: 0.1s; }
+  .reveal-children.visible > *:nth-child(3) { transition-delay: 0.15s; }
+  .reveal-children.visible > *:nth-child(4) { transition-delay: 0.2s; }
+  .reveal-children.visible > *:nth-child(5) { transition-delay: 0.25s; }
+  .reveal-children.visible > *:nth-child(6) { transition-delay: 0.3s; }
+  .reveal-children.visible > *:nth-child(7) { transition-delay: 0.35s; }
+
+  /* Amber glow effect */
+  .glow-amber {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.15),
+                0 0 60px rgba(245, 158, 11, 0.05);
+  }
+
+  /* Amber left accent border for cards */
+  .accent-left {
+    border-left: 3px solid rgba(245, 158, 11, 0.4);
+  }
+
+  .accent-left:hover {
+    border-left-color: rgba(245, 158, 11, 0.8);
   }
 }
 
@@ -58,14 +114,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0a192f;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #233554;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #2d4a6f;
 }

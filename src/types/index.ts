@@ -62,6 +62,7 @@ export interface PortfolioProfile {
   linkedin: string;
   github: string;
   summary: string;
+  avatar?: string;
 }
 
 export interface PortfolioConfig {
@@ -78,6 +79,11 @@ export interface PortfolioConfig {
   github?: string;
   about_summary?: string;
   summary?: string;
+  avatar_url?: string;
+  avatar?: string;
+  image?: string;
+  image_url?: string;
+  profile_image?: string;
   skills?: SkillCategory[] | Record<string, string[]>;
   experience?: Array<{
     role?: string;

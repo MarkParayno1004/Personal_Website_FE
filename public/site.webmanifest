@@ -4,8 +4,8 @@
   "description": "Software Engineer, Full Stack & Mobile Developer specializing in Flutter, React, TypeScript, Django & Laravel",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#2563eb",
+  "background_color": "#0a192f",
+  "theme_color": "#f59e0b",
   "icons": [
     {
       "src": "/favicon.svg",

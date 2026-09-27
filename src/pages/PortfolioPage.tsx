@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import client from "../api/client";
 import {
   MapPin,
@@ -16,6 +16,7 @@ import {
   Users,
   ChevronRight,
   ArrowUpRight,
+  Sparkles,
 } from "lucide-react";
 import {
   GithubIcon as Github,
@@ -150,45 +151,46 @@ const EDUCATION: EducationItem[] = [
   },
 ];
 
+/* ─── Warm color map for skills ─── */
 const colorMap: Record<
   string,
   { bg: string; text: string; border: string; badge: string }
 > = {
   blue: {
-    bg: "bg-blue-900/20",
-    text: "text-blue-400",
-    border: "border-blue-800",
-    badge: "bg-blue-900/30 text-blue-300",
+    bg: "bg-amber-500/10",
+    text: "text-amber-400",
+    border: "border-amber-500/20",
+    badge: "bg-amber-500/10 text-amber-300 border border-amber-500/15",
   },
   purple: {
-    bg: "bg-purple-900/20",
-    text: "text-purple-400",
-    border: "border-purple-800",
-    badge: "bg-purple-900/30 text-purple-300",
+    bg: "bg-violet-500/10",
+    text: "text-violet-400",
+    border: "border-violet-500/20",
+    badge: "bg-violet-500/10 text-violet-300 border border-violet-500/15",
   },
   green: {
-    bg: "bg-emerald-900/20",
+    bg: "bg-emerald-500/10",
     text: "text-emerald-400",
-    border: "border-emerald-800",
-    badge: "bg-emerald-900/30 text-emerald-300",
+    border: "border-emerald-500/20",
+    badge: "bg-emerald-500/10 text-emerald-300 border border-emerald-500/15",
   },
   amber: {
-    bg: "bg-amber-900/20",
-    text: "text-amber-400",
-    border: "border-amber-800",
-    badge: "bg-amber-900/30 text-amber-300",
+    bg: "bg-orange-500/10",
+    text: "text-orange-400",
+    border: "border-orange-500/20",
+    badge: "bg-orange-500/10 text-orange-300 border border-orange-500/15",
   },
   cyan: {
-    bg: "bg-cyan-900/20",
-    text: "text-cyan-400",
-    border: "border-cyan-800",
-    badge: "bg-cyan-900/30 text-cyan-300",
+    bg: "bg-teal-500/10",
+    text: "text-teal-400",
+    border: "border-teal-500/20",
+    badge: "bg-teal-500/10 text-teal-300 border border-teal-500/15",
   },
   rose: {
-    bg: "bg-rose-900/20",
+    bg: "bg-rose-500/10",
     text: "text-rose-400",
-    border: "border-rose-800",
-    badge: "bg-rose-900/30 text-rose-300",
+    border: "border-rose-500/20",
+    badge: "bg-rose-500/10 text-rose-300 border border-rose-500/15",
   },
 };
 
@@ -214,6 +216,36 @@ const langColors: Record<string, string> = {
   Svelte: "#ff3e00",
 };
 
+/* ─── Scroll reveal hook ─── */
+function useScrollReveal() {
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" },
+    );
+
+    // Small delay to ensure DOM is ready
+    requestAnimationFrame(() => {
+      document
+        .querySelectorAll(".reveal, .reveal-children")
+        .forEach((el) => observer.observe(el));
+    });
+
+    return () => observer.disconnect();
+  }, []);
+}
+
 /* ─── Section wrapper ─── */
 function Section({
   id,
@@ -225,30 +257,34 @@ function Section({
   className?: string;
 }) {
   return (
-    <section id={id} className={`py-20 ${className}`}>
+    <section id={id} className={`py-24 ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
     </section>
   );
 }
 
+/* ─── Numbered section header ─── */
 function SectionHeader({
+  number,
   title,
   subtitle,
 }: {
+  number: string;
   title: string;
   subtitle?: string;
 }) {
   return (
-    <div className="text-center mb-14">
-      <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-        {title}
-      </h2>
+    <div className="reveal mb-14">
+      <div className="flex items-center gap-3 mb-2">
+        <span className="text-amber-400 font-mono text-lg font-medium">
+          {number}.
+        </span>
+        <h2 className="text-3xl md:text-4xl font-bold text-white">{title}</h2>
+        <div className="flex-1 h-px bg-[#233554] hidden md:block" />
+      </div>
       {subtitle && (
-        <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-          {subtitle}
-        </p>
+        <p className="text-[#8892b0] text-lg ml-0 md:ml-10">{subtitle}</p>
       )}
-      <div className="mt-4 w-20 h-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mx-auto" />
     </div>
   );
 }
@@ -257,6 +293,9 @@ export default function PortfolioPage() {
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(true);
   const [config, setConfig] = useState<PortfolioConfig | null>(null);
+
+  // Activate scroll-reveal animations
+  useScrollReveal();
 
   useEffect(() => {
     // Fetch portfolio config
@@ -287,7 +326,16 @@ export default function PortfolioPage() {
   }, []);
 
   const profile: PortfolioProfile = useMemo(() => {
-    if (!config) return PROFILE;
+    const avatar =
+      config?.avatar_url ||
+      config?.avatar ||
+      config?.image ||
+      config?.image_url ||
+      config?.profile_image ||
+      localStorage.getItem("portfolio_avatar") ||
+      "";
+
+    if (!config) return { ...PROFILE, avatar };
     return {
       name: config.full_name || config.name || PROFILE.name,
       headline: config.headline || PROFILE.headline,
@@ -301,6 +349,7 @@ export default function PortfolioPage() {
           : `https://github.com/${config.github_username}?tab=repositories`
         : config.github || PROFILE.github,
       summary: config.about_summary || config.summary || PROFILE.summary,
+      avatar,
     };
   }, [config]);
 
@@ -376,110 +425,187 @@ export default function PortfolioPage() {
   const filteredRepos = repos;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      {/* ═══ HERO ═══ */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
+    <main className="min-h-screen bg-[#0a192f] text-[#e2e8f0]">
+      {/* ═══════════════════════════════════════════════
+          HERO — Left-aligned, warm, confident
+      ═══════════════════════════════════════════════ */}
+      <section className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Gradient mesh background */}
+        <div className="absolute inset-0 bg-[#0a192f]" />
+        <div className="absolute top-0 right-0 w-[700px] h-[700px] bg-amber-500/[0.04] rounded-full blur-[150px]" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-500/[0.04] rounded-full blur-[120px]" />
+        <div className="absolute top-1/2 left-1/3 w-[400px] h-[400px] bg-violet-500/[0.03] rounded-full blur-[100px]" />
 
-        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-          {/* Avatar */}
-          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold shadow-2xl shadow-blue-500/25">
-            MP
+        {/* Floating decorative dots */}
+        <div className="absolute top-[20%] left-[10%] w-1.5 h-1.5 rounded-full bg-amber-400/40 animate-float" />
+        <div className="absolute top-[30%] right-[15%] w-2 h-2 rounded-full bg-teal-400/30 animate-float-slow" />
+        <div className="absolute bottom-[25%] left-[20%] w-1 h-1 rounded-full bg-amber-400/30 animate-float-slower" />
+        <div className="absolute top-[60%] right-[25%] w-1.5 h-1.5 rounded-full bg-violet-400/25 animate-float" />
+        <div className="absolute bottom-[35%] right-[10%] w-1 h-1 rounded-full bg-teal-400/20 animate-float-slow" />
+
+        {/* Content */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="grid lg:grid-cols-5 gap-12 items-center">
+            {/* Left: Text content (takes 3 cols) */}
+            <div className="lg:col-span-3 animate-slide-up">
+              {/* Status badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-sm font-medium mb-8">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-400" />
+                </span>
+                Available for opportunities
+              </div>
+
+              <p className="text-[#8892b0] font-mono text-base mb-4">
+                Hi, my name is
+              </p>
+
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-4">
+                <span className="text-white">{(profile.name || PROFILE.name).split(" ").slice(0, -1).join(" ")}</span>
+                <br />
+                <span className="text-amber-400">
+                  {(profile.name || PROFILE.name).split(" ").slice(-1)[0]}.
+                </span>
+              </h1>
+
+              <p className="text-xl sm:text-2xl text-[#8892b0] font-medium mb-6 max-w-xl">
+                {profile.headline || PROFILE.headline}
+              </p>
+
+              {/* Contact pills */}
+              <div className="flex flex-wrap items-center gap-2.5 text-sm text-[#8892b0] mb-8">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#112240] border border-[#233554]">
+                  <MapPin size={14} className="text-amber-400" />
+                  {profile.location || PROFILE.location}
+                </span>
+                <a
+                  href={`mailto:${profile.email || PROFILE.email}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#112240] border border-[#233554] hover:border-amber-500/30 hover:text-amber-300 transition-colors"
+                >
+                  <Mail size={14} className="text-amber-400" />
+                  {profile.email || PROFILE.email}
+                </a>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#112240] border border-[#233554]">
+                  <Phone size={14} className="text-amber-400" />
+                  {profile.phone || PROFILE.phone}
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  href="#"
+                  className="inline-flex items-center gap-2 px-7 py-3 bg-amber-500 hover:bg-amber-600 text-[#0a192f] font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 active:scale-[0.98]"
+                >
+                  <Download size={18} />
+                  Download CV
+                </a>
+                <a
+                  href={profile.linkedin || PROFILE.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-7 py-3 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 font-medium rounded-lg transition-all duration-200"
+                >
+                  <Linkedin size={18} />
+                  LinkedIn
+                </a>
+                <a
+                  href={profile.github || PROFILE.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-7 py-3 border border-[#233554] text-[#e2e8f0] hover:border-amber-500/30 hover:text-amber-400 font-medium rounded-lg transition-all duration-200"
+                >
+                  <Github size={18} />
+                  GitHub
+                </a>
+              </div>
+            </div>
+
+            {/* Right: Avatar decoration (takes 2 cols) */}
+            <div className="hidden lg:flex lg:col-span-2 justify-center">
+              <div className="relative">
+                {/* Main avatar box */}
+                <div className="w-72 h-72 rounded-2xl bg-[#112240] border border-[#233554] flex items-center justify-center relative overflow-hidden group shadow-2xl shadow-black/40">
+                  {profile.avatar ? (
+                    <>
+                      <img
+                        src={profile.avatar}
+                        alt={profile.name || "Profile"}
+                        className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                    </>
+                  ) : (
+                    <>
+                      {/* Subtle gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <span className="text-8xl font-bold text-amber-400/20 group-hover:text-amber-400/30 transition-colors duration-500 select-none">
+                        {(profile.name || "Mark Philip")
+                          .split(" ")
+                          .map((n) => n[0])
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .join("")}
+                      </span>
+                    </>
+                  )}
+                </div>
+                {/* Decorative offset border */}
+                <div className="absolute -top-4 -right-4 w-72 h-72 rounded-2xl border-2 border-amber-500/20 -z-10" />
+                {/* Corner sparkle */}
+                <div className="absolute -top-2 -right-2 text-amber-400/50">
+                  <Sparkles size={16} />
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 tracking-tight">
-            {profile.name || PROFILE.name}
-          </h1>
-          <p className="text-xl sm:text-2xl text-blue-400 font-medium mb-6">
-            {profile.headline || PROFILE.headline}
-          </p>
-
-          {/* Contact pills */}
-          <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-slate-400 mb-8">
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/50">
-              <MapPin size={14} className="text-blue-400" />
-              {profile.location || PROFILE.location}
-            </span>
-            <a
-              href={`mailto:${profile.email || PROFILE.email}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/50 hover:bg-blue-900/30 hover:border-blue-700/50 text-slate-300 hover:text-blue-300 transition-colors"
-            >
-              <Mail size={14} className="text-blue-400" />
-              {profile.email || PROFILE.email}
-            </a>
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/50">
-              <Phone size={14} className="text-blue-400" />
-              {profile.phone || PROFILE.phone}
-            </span>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <a
-              href="#"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]"
-            >
-              <Download size={18} />
-              Download CV
-            </a>
-            <a
-              href="#about"
-              className="inline-flex items-center gap-2 px-6 py-3 border border-slate-700 bg-slate-900/50 text-slate-200 hover:bg-slate-800 font-medium rounded-xl transition-all duration-200"
-            >
-              <Mail size={18} />
-              Contact Me
-            </a>
-            <a
-              href={profile.linkedin || PROFILE.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#0077B5] hover:bg-[#006399] text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-[#0077B5]/25"
-            >
-              <Linkedin size={18} />
-              LinkedIn
-            </a>
-            <a
-              href={profile.github || PROFILE.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-slate-900/50"
-            >
-              <Github size={18} />
-              GitHub
-            </a>
-          </div>
+        {/* Scroll indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-[#8892b0] animate-bounce">
+          <span className="text-xs font-mono">scroll</span>
+          <div className="w-px h-8 bg-gradient-to-b from-amber-400/50 to-transparent" />
         </div>
       </section>
 
-      {/* ═══ ABOUT ═══ */}
+      {/* ═══════════════════════════════════════════════
+          ABOUT
+      ═══════════════════════════════════════════════ */}
       <Section id="about">
-        <SectionHeader title="About Me" subtitle="A brief introduction" />
-        <div className="max-w-3xl mx-auto">
-          <div className="glass-card p-8">
-            <p className="text-lg leading-relaxed text-slate-300">
+        <SectionHeader
+          number="01"
+          title="About Me"
+          subtitle="A brief introduction"
+        />
+        <div className="max-w-3xl reveal">
+          <div className="glass-card p-8 accent-left">
+            <p className="text-lg leading-relaxed text-[#8892b0]">
               {profile.summary || PROFILE.summary}
             </p>
           </div>
         </div>
       </Section>
 
-      {/* ═══ SKILLS ═══ */}
-      <Section id="skills" className="bg-slate-900/30">
+      {/* ═══════════════════════════════════════════════
+          SKILLS
+      ═══════════════════════════════════════════════ */}
+      <Section id="skills" className="bg-[#112240]/30">
         <SectionHeader
+          number="02"
           title="Technical Skills"
           subtitle="Technologies and tools I work with"
         />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 reveal-children">
           {skills.map((group) => {
             const colors = colorMap[group.color] || colorMap.blue;
             const Icon = group.icon || Code2;
             return (
               <div key={group.category} className="glass-card p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className={`p-2.5 rounded-xl ${colors.bg}`}>
+                  <div
+                    className={`p-2.5 rounded-xl ${colors.bg} border ${colors.border}`}
+                  >
                     <Icon size={22} className={colors.text} />
                   </div>
                   <h3 className="text-lg font-semibold text-white">
@@ -502,18 +628,21 @@ export default function PortfolioPage() {
         </div>
       </Section>
 
-      {/* ═══ EXPERIENCE ═══ */}
+      {/* ═══════════════════════════════════════════════
+          EXPERIENCE
+      ═══════════════════════════════════════════════ */}
       <Section id="experience">
         <SectionHeader
+          number="03"
           title="Professional Experience"
           subtitle="My career journey so far"
         />
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl">
           <div className="relative">
-            {/* Timeline line */}
-            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-slate-700 hidden md:block" />
+            {/* Timeline line — amber gradient */}
+            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-500/60 via-amber-500/30 to-[#233554] hidden md:block" />
 
-            <div className="space-y-8">
+            <div className="space-y-8 reveal-children">
               {experience.map((job, idx) => (
                 <div key={idx} className="relative flex gap-6">
                   {/* Timeline dot */}
@@ -521,36 +650,43 @@ export default function PortfolioPage() {
                     <div
                       className={`w-4 h-4 rounded-full border-4 ${
                         job.current
-                          ? "border-blue-500 bg-blue-900"
-                          : "border-slate-600 bg-slate-800"
+                          ? "border-amber-500 bg-amber-900/50 shadow-md shadow-amber-500/30"
+                          : "border-[#233554] bg-[#112240]"
                       }`}
                     />
                   </div>
                   {/* Card */}
-                  <div className="flex-1 glass-card p-6">
+                  <div className="flex-1 glass-card p-6 accent-left">
                     <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                       <div>
                         <h3 className="text-xl font-bold text-white">
                           {job.title}
                         </h3>
-                        <p className="text-blue-400 font-medium">
+                        <p className="text-amber-400 font-medium">
                           {job.company}
                         </p>
                       </div>
-                      <span className="flex items-center gap-1.5 text-sm text-slate-400 bg-slate-800 px-3 py-1 rounded-full">
-                        <Calendar size={14} />
-                        {job.period}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {job.current && (
+                          <span className="px-2 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-medium">
+                            Current
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1.5 text-sm text-[#8892b0] bg-[#112240] px-3 py-1 rounded-full border border-[#233554]">
+                          <Calendar size={14} />
+                          {job.period}
+                        </span>
+                      </div>
                     </div>
                     <ul className="space-y-2">
                       {job.bullets.map((bullet, i) => (
                         <li
                           key={i}
-                          className="flex items-start gap-2 text-slate-300"
+                          className="flex items-start gap-2 text-[#8892b0]"
                         >
                           <ChevronRight
                             size={16}
-                            className="shrink-0 mt-1 text-blue-400"
+                            className="shrink-0 mt-1 text-amber-400"
                           />
                           <span>{bullet}</span>
                         </li>
@@ -564,9 +700,12 @@ export default function PortfolioPage() {
         </div>
       </Section>
 
-      {/* ═══ GITHUB PROJECTS ═══ */}
-      <Section id="projects" className="bg-slate-900/30">
+      {/* ═══════════════════════════════════════════════
+          GITHUB PROJECTS
+      ═══════════════════════════════════════════════ */}
+      <Section id="projects" className="bg-[#112240]/30">
         <SectionHeader
+          number="04"
           title="GitHub Projects"
           subtitle="Open source work and personal projects"
         />
@@ -576,14 +715,14 @@ export default function PortfolioPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="glass-card p-6 animate-pulse">
-                <div className="h-5 bg-slate-700 rounded w-3/4 mb-3" />
-                <div className="h-4 bg-slate-700 rounded w-full mb-2" />
-                <div className="h-4 bg-slate-700 rounded w-2/3" />
+                <div className="h-5 bg-[#233554] rounded w-3/4 mb-3" />
+                <div className="h-4 bg-[#233554] rounded w-full mb-2" />
+                <div className="h-4 bg-[#233554] rounded w-2/3" />
               </div>
             ))}
           </div>
         ) : filteredRepos.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 reveal-children">
             {filteredRepos.map((repo) => (
               <a
                 key={repo.id}
@@ -593,18 +732,18 @@ export default function PortfolioPage() {
                 className="glass-card p-6 group"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors truncate">
+                  <h3 className="text-lg font-semibold text-white group-hover:text-amber-400 transition-colors truncate">
                     {repo.name}
                   </h3>
                   <ArrowUpRight
                     size={18}
-                    className="shrink-0 text-slate-400 group-hover:text-blue-400 transition-colors"
+                    className="shrink-0 text-[#8892b0] group-hover:text-amber-400 transition-colors"
                   />
                 </div>
-                <p className="text-sm text-slate-400 mb-4 line-clamp-2">
+                <p className="text-sm text-[#8892b0] mb-4 line-clamp-2">
                   {repo.description || "No description available"}
                 </p>
-                <div className="flex items-center gap-4 text-sm text-slate-400">
+                <div className="flex items-center gap-4 text-sm text-[#8892b0]">
                   {repo.language && (
                     <span className="flex items-center gap-1.5">
                       <span
@@ -630,12 +769,12 @@ export default function PortfolioPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-12 reveal">
             <Github
               size={48}
-              className="mx-auto text-slate-600 mb-4"
+              className="mx-auto text-[#233554] mb-4"
             />
-            <p className="text-slate-400">
+            <p className="text-[#8892b0]">
               {repos.length === 0
                 ? "Unable to load repositories. Visit GitHub directly."
                 : "No repositories match your search."}
@@ -645,7 +784,7 @@ export default function PortfolioPage() {
                 href={PROFILE.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-4 text-blue-400 hover:underline"
+                className="inline-flex items-center gap-2 mt-4 text-amber-400 hover:underline"
               >
                 <Github size={16} />
                 View on GitHub
@@ -655,29 +794,31 @@ export default function PortfolioPage() {
         )}
       </Section>
 
-      {/* ═══ EDUCATION ═══ */}
-      <Section id="education" className="bg-slate-900/30">
-        <SectionHeader title="Education" subtitle="Academic background" />
-        <div className="max-w-2xl mx-auto">
+      {/* ═══════════════════════════════════════════════
+          EDUCATION
+      ═══════════════════════════════════════════════ */}
+      <Section id="education">
+        <SectionHeader
+          number="05"
+          title="Education"
+          subtitle="Academic background"
+        />
+        <div className="max-w-2xl reveal-children">
           {education.map((edu, idx) => (
-            <div key={idx} className="glass-card p-6 flex items-start gap-5">
-              <div className="p-3 rounded-xl bg-blue-900/20">
-                <GraduationCap
-                  size={28}
-                  className="text-blue-400"
-                />
+            <div
+              key={idx}
+              className="glass-card p-6 flex items-start gap-5 accent-left"
+            >
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <GraduationCap size={28} className="text-amber-400" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white">
-                  {edu.degree}
-                </h3>
-                <p className="text-blue-400 font-medium">
+                <h3 className="text-xl font-bold text-white">{edu.degree}</h3>
+                <p className="text-amber-400 font-medium">
                   {edu.specialization}
                 </p>
-                <p className="text-slate-300 mt-1">
-                  {edu.school}
-                </p>
-                <span className="inline-flex items-center gap-1.5 mt-2 text-sm text-slate-400">
+                <p className="text-[#8892b0] mt-1">{edu.school}</p>
+                <span className="inline-flex items-center gap-1.5 mt-2 text-sm text-[#8892b0]">
                   <Calendar size={14} />
                   {edu.year}
                 </span>

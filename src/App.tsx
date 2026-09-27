@@ -14,7 +14,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-blue-500/30 selection:text-blue-200">
+        <div className="min-h-screen bg-[#0a192f] text-[#e2e8f0] selection:bg-amber-500/25 selection:text-amber-100">
           <Navbar />
 
           <Routes>
@@ -71,12 +71,12 @@ export default function App() {
                 borderRadius: '12px',
                 padding: '12px 16px',
                 fontSize: '14px',
-                background: '#1e293b',
-                color: '#f8fafc',
-                border: '1px solid #334155',
+                background: '#112240',
+                color: '#e2e8f0',
+                border: '1px solid #233554',
               },
               success: {
-                iconTheme: { primary: '#10b981', secondary: '#fff' },
+                iconTheme: { primary: '#14b8a6', secondary: '#fff' },
               },
               error: {
                 iconTheme: { primary: '#ef4444', secondary: '#fff' },

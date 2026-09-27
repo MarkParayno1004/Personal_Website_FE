@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ComponentType } from "react";
+import { useState, useEffect, useCallback, useRef, type ComponentType } from "react";
 import client from "../api/client";
 import { getCategories } from "../api/categories";
 import CategoriesOverview from "../components/categories/CategoriesOverview";
@@ -21,6 +21,10 @@ import {
   ShieldCheck,
   ShieldOff,
   RefreshCw,
+  Upload,
+  Image as ImageIcon,
+  Sparkles,
+  Camera,
 } from "lucide-react";
 import type {
   DashboardStats,
@@ -187,6 +191,18 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
   );
 }
 
+const DEFAULT_PROFILE = {
+  full_name: "Mark Philip V. Parayno",
+  headline: "Software Engineer | Full Stack & Mobile Developer (Flutter)",
+  location: "San Juan City, Philippines",
+  email: "paraynomarkphilip@gmail.com",
+  phone: "+63 961 312 8973",
+  linkedin_url: "https://www.linkedin.com/in/mark-philip-parayno/",
+  github_username: "MarkParayno1004",
+  summary:
+    "Results-driven Software Engineer, Full Stack and Mobile Developer with hands-on production experience building cross-platform mobile apps (Flutter) and web applications (React, TypeScript, Svelte, Django, Laravel). Skilled in clean architecture, API optimization, and scalable cloud solutions.",
+};
+
 interface PortfolioConfigForm {
   full_name: string;
   headline: string;
@@ -196,6 +212,7 @@ interface PortfolioConfigForm {
   linkedin_url: string;
   github_username: string;
   summary: string;
+  avatar_url: string;
 }
 
 /* ═══════════════════════════════════════════════
@@ -204,33 +221,61 @@ interface PortfolioConfigForm {
 function PortfolioConfigTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<PortfolioConfigForm>({
-    full_name: "",
-    headline: "",
-    location: "",
-    email: "",
-    phone: "",
-    linkedin_url: "",
-    github_username: "",
-    summary: "",
+    full_name: DEFAULT_PROFILE.full_name,
+    headline: DEFAULT_PROFILE.headline,
+    location: DEFAULT_PROFILE.location,
+    email: DEFAULT_PROFILE.email,
+    phone: DEFAULT_PROFILE.phone,
+    linkedin_url: DEFAULT_PROFILE.linkedin_url,
+    github_username: DEFAULT_PROFILE.github_username,
+    summary: DEFAULT_PROFILE.summary,
+    avatar_url: "",
   });
 
   const fetchConfig = useCallback(() => {
     client
       .get("/portfolio/config")
       .then((res) => {
+        const raw = res.data || {};
+        const bioSummary =
+          raw.about_summary ??
+          raw.summary ??
+          raw.about ??
+          raw.bio ??
+          DEFAULT_PROFILE.summary;
+
+        const avatar =
+          raw.avatar_url ||
+          raw.avatar ||
+          raw.image ||
+          raw.image_url ||
+          raw.profile_image ||
+          localStorage.getItem("portfolio_avatar") ||
+          "";
+
         setForm({
-          full_name: res.data.full_name || res.data.name || "",
-          headline: res.data.headline || "",
-          location: res.data.location || "",
-          email: res.data.email || "",
-          phone: res.data.phone || "",
-          linkedin_url: res.data.linkedin_url || res.data.linkedin || "",
-          github_username: res.data.github_username || "",
-          summary: res.data.summary || "",
+          full_name: raw.full_name || raw.name || DEFAULT_PROFILE.full_name,
+          headline: raw.headline || DEFAULT_PROFILE.headline,
+          location: raw.location || DEFAULT_PROFILE.location,
+          email: raw.email || DEFAULT_PROFILE.email,
+          phone: raw.phone || DEFAULT_PROFILE.phone,
+          linkedin_url:
+            raw.linkedin_url || raw.linkedin || DEFAULT_PROFILE.linkedin_url,
+          github_username:
+            raw.github_username || raw.github || DEFAULT_PROFILE.github_username,
+          summary: bioSummary || DEFAULT_PROFILE.summary,
+          avatar_url: avatar,
         });
       })
-      .catch(() => toast.error("Failed to load portfolio config"))
+      .catch(() => {
+        toast.error("Failed to load portfolio config from server, loaded defaults");
+        setForm((prev) => ({
+          ...prev,
+          avatar_url: localStorage.getItem("portfolio_avatar") || "",
+        }));
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -238,14 +283,69 @@ function PortfolioConfigTab() {
     fetchConfig();
   }, [fetchConfig]);
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file (PNG, JPG, WEBP, SVG)");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file is too large (maximum 5MB)");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setForm((f) => ({ ...f, avatar_url: result }));
+      toast.success("Image selected! Click 'Save Changes' to apply.");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read image file");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setForm((f) => ({ ...f, avatar_url: "" }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    toast.success("Image removed. Switched to initials avatar.");
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      await client.put("/portfolio/config", form);
-      toast.success("Portfolio updated successfully!");
+      const payload = {
+        ...form,
+        name: form.full_name,
+        about_summary: form.summary,
+        about: form.summary,
+        bio: form.summary,
+        linkedin: form.linkedin_url,
+        github: form.github_username,
+        avatar: form.avatar_url,
+        avatar_url: form.avatar_url,
+        image: form.avatar_url,
+        image_url: form.avatar_url,
+        profile_image: form.avatar_url,
+      };
+
+      if (form.avatar_url) {
+        localStorage.setItem("portfolio_avatar", form.avatar_url);
+      } else {
+        localStorage.removeItem("portfolio_avatar");
+      }
+
+      await client.put("/portfolio/config", payload);
+      toast.success("Portfolio config updated successfully!");
       fetchConfig();
     } catch {
-      toast.error("Failed to update portfolio");
+      toast.error("Failed to update config on server (saved locally)");
     } finally {
       setSaving(false);
     }
@@ -254,13 +354,13 @@ function PortfolioConfigTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-blue-500" />
+        <Loader2 size={32} className="animate-spin text-amber-500" />
       </div>
     );
   }
 
   const formFields: Array<{
-    key: keyof PortfolioConfigForm;
+    key: keyof Omit<PortfolioConfigForm, "summary" | "avatar_url">;
     label: string;
     type: string;
   }> = [
@@ -276,13 +376,18 @@ function PortfolioConfigTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">
-          Portfolio Configuration
-        </h2>
+        <div>
+          <h2 className="text-2xl font-bold text-white">
+            Portfolio Configuration
+          </h2>
+          <p className="text-sm text-[#8892b0] mt-1">
+            Customize your public portfolio information, hero image, and bio summary.
+          </p>
+        </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25 disabled:opacity-60"
+          className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#0a192f] font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 active:scale-[0.98] disabled:opacity-60"
         >
           {saving ? (
             <Loader2 size={18} className="animate-spin" />
@@ -294,8 +399,100 @@ function PortfolioConfigTab() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Form */}
-        <div className="space-y-5">
+        {/* Form Column */}
+        <div className="space-y-6">
+          {/* Avatar / Image Upload Card */}
+          <div className="glass-card p-6 accent-left">
+            <div className="flex items-center gap-2 mb-4">
+              <Camera size={20} className="text-amber-400" />
+              <h3 className="text-lg font-semibold text-white">
+                Hero Profile Image
+              </h3>
+            </div>
+            <p className="text-sm text-[#8892b0] mb-4">
+              Upload a photo to be showcased in the Hero section of your portfolio. If no image is provided, a stylized initials avatar ("MP") will be shown.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-[#0a192f]/60 border border-[#233554]">
+              {/* Thumbnail preview */}
+              <div className="w-24 h-24 rounded-xl bg-[#112240] border border-[#233554] flex items-center justify-center overflow-hidden shrink-0 relative group">
+                {form.avatar_url ? (
+                  <img
+                    src={form.avatar_url}
+                    alt="Preview"
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                ) : (
+                  <span className="text-2xl font-bold text-amber-400/40 select-none">
+                    {(form.full_name || "MP")
+                      .split(" ")
+                      .map((n) => n[0])
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .join("")}
+                  </span>
+                )}
+              </div>
+
+              {/* Upload actions */}
+              <div className="flex-1 space-y-3 w-full">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                  onChange={handleImageFileChange}
+                  className="hidden"
+                  id="avatar-file-input"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <label
+                    htmlFor="avatar-file-input"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-sm font-medium cursor-pointer transition-colors"
+                  >
+                    <Upload size={16} />
+                    Upload Image
+                  </label>
+                  {form.avatar_url && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <Trash2 size={16} />
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <div className="text-xs text-[#8892b0]">
+                  Supports PNG, JPG, WEBP, SVG (max 5MB)
+                </div>
+              </div>
+            </div>
+
+            {/* Direct Image URL input */}
+            <div className="mt-4">
+              <label className="block text-xs font-medium text-[#8892b0] mb-1.5">
+                Or enter image URL:
+              </label>
+              <div className="relative">
+                <ImageIcon
+                  size={16}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892b0]"
+                />
+                <input
+                  type="url"
+                  placeholder="https://example.com/photo.jpg"
+                  value={form.avatar_url.startsWith("data:") ? "" : form.avatar_url}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, avatar_url: e.target.value }))
+                  }
+                  className="w-full pl-10 pr-4 py-2 bg-[#0a192f] border border-[#233554] rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Basic Information Card */}
           <div className="glass-card p-6">
             <h3 className="text-lg font-semibold text-white mb-4">
               Basic Information
@@ -312,52 +509,136 @@ function PortfolioConfigTab() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, [field.key]: e.target.value }))
                     }
-                    className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-white placeholder:text-slate-500"
+                    className="w-full px-4 py-2.5 bg-[#0a192f] border border-[#233554] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500"
                   />
                 </div>
               ))}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Bio Summary
-                </label>
-                <textarea
-                  value={form.summary}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, summary: e.target.value }))
-                  }
-                  rows={4}
-                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-white placeholder:text-slate-500 resize-none"
-                />
-              </div>
             </div>
+          </div>
+
+          {/* Bio Summary Card */}
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-white">
+                Bio & About Summary
+              </h3>
+              <span className="text-xs text-[#8892b0]">
+                {form.summary.length} characters
+              </span>
+            </div>
+            <p className="text-xs text-[#8892b0] mb-3">
+              This summary is displayed in the "01. About Me" section on your public portfolio.
+            </p>
+            <textarea
+              value={form.summary}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, summary: e.target.value }))
+              }
+              rows={5}
+              placeholder="Write your professional bio summary..."
+              className="w-full px-4 py-3 bg-[#0a192f] border border-[#233554] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500 resize-y leading-relaxed text-sm"
+            />
           </div>
         </div>
 
-        {/* Live Preview */}
-        <div className="glass-card p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">
-            Live Preview
-          </h3>
-          <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-6">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
-                {(form.full_name || "MP")
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .slice(0, 2)}
+        {/* Live Preview Column */}
+        <div className="space-y-6">
+          <div className="glass-card p-6 sticky top-20">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                Live Preview
+              </h3>
+              <span className="text-xs font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                Hero & About
+              </span>
+            </div>
+
+            <div className="bg-[#0a192f] border border-[#233554] rounded-2xl p-6 text-center overflow-hidden relative">
+              {/* Background ambient glow */}
+              <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Hero Avatar Box Preview */}
+              <div className="relative inline-block my-2">
+                <div className="w-48 h-48 rounded-2xl bg-[#112240] border border-[#233554] flex items-center justify-center relative overflow-hidden group shadow-xl shadow-black/40">
+                  {form.avatar_url ? (
+                    <>
+                      <img
+                        src={form.avatar_url}
+                        alt="Preview"
+                        className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <span className="text-6xl font-bold text-amber-400/20 group-hover:text-amber-400/30 transition-colors duration-500 select-none">
+                        {(form.full_name || "Mark Philip")
+                          .split(" ")
+                          .map((n) => n[0])
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .join("")}
+                      </span>
+                    </>
+                  )}
+                </div>
+                {/* Decorative offset border */}
+                <div className="absolute -top-3 -right-3 w-48 h-48 rounded-2xl border-2 border-amber-500/20 -z-10" />
+                {/* Corner sparkle */}
+                <div className="absolute -top-1 -right-1 text-amber-400/50">
+                  <Sparkles size={14} />
+                </div>
               </div>
-              <h4 className="text-xl font-bold text-white">
-                {form.full_name || "Your Name"}
+
+              {/* Name & Headline */}
+              <h4 className="text-2xl font-bold mt-4 tracking-tight">
+                <span className="text-white">
+                  {(form.full_name || DEFAULT_PROFILE.full_name)
+                    .split(" ")
+                    .slice(0, -1)
+                    .join(" ")}{" "}
+                </span>
+                <span className="text-amber-400">
+                  {(form.full_name || DEFAULT_PROFILE.full_name)
+                    .split(" ")
+                    .slice(-1)[0]}
+                  .
+                </span>
               </h4>
-              <p className="text-blue-400 font-medium mt-1">
-                {form.headline || "Your Headline"}
+              <p className="text-amber-400/90 font-medium text-sm mt-1">
+                {form.headline || DEFAULT_PROFILE.headline}
               </p>
-              <p className="text-sm text-slate-400 mt-2">{form.location}</p>
-              <p className="text-sm text-slate-400">{form.email}</p>
-              <p className="text-sm text-slate-300 mt-4 text-left">
-                {form.summary || "Your bio summary will appear here..."}
-              </p>
+
+              {/* Meta pills */}
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs text-[#8892b0]">
+                {form.location && (
+                  <span className="px-2.5 py-1 rounded-full bg-[#112240] border border-[#233554]">
+                    📍 {form.location}
+                  </span>
+                )}
+                {form.email && (
+                  <span className="px-2.5 py-1 rounded-full bg-[#112240] border border-[#233554]">
+                    ✉️ {form.email}
+                  </span>
+                )}
+                {form.phone && (
+                  <span className="px-2.5 py-1 rounded-full bg-[#112240] border border-[#233554]">
+                    📞 {form.phone}
+                  </span>
+                )}
+              </div>
+
+              {/* About Summary Box Preview */}
+              <div className="mt-6 pt-5 border-t border-[#233554]/60 text-left">
+                <p className="text-xs font-mono text-amber-400 mb-2">
+                  01. About Me Preview:
+                </p>
+                <div className="p-4 rounded-xl bg-[#112240]/60 border border-[#233554] text-xs text-[#8892b0] leading-relaxed">
+                  {form.summary || DEFAULT_PROFILE.summary}
+                </div>
+              </div>
             </div>
           </div>
         </div>
