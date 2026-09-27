@@ -116,14 +116,6 @@ export default function Navbar() {
                     <Shield size={16} />
                     Admin Dashboard
                   </Link>
-                  <Link
-                    to="/categories"
-                    onClick={closeMenus}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#e2e8f0] hover:bg-amber-500/10 hover:text-amber-300"
-                  >
-                    <FolderTree size={16} />
-                    Categories Manager
-                  </Link>
                   {isAdminPortal && (
                     <Link
                       to="/"
