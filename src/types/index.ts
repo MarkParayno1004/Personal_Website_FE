@@ -63,6 +63,7 @@ export interface PortfolioProfile {
   github: string;
   summary: string;
   avatar?: string;
+  cv_url?: string;
 }
 
 export interface PortfolioConfig {
@@ -84,6 +85,16 @@ export interface PortfolioConfig {
   image?: string;
   image_url?: string;
   profile_image?: string;
+  cv_url?: string;
+  cv_file?: string;
+  cv?: string;
+  cv_name?: string;
+  resume_url?: string;
+  resume_file?: string;
+  resume?: string;
+  pdf_url?: string;
+  pdf_file?: string;
+  pdf?: string;
   skills?: SkillCategory[] | Record<string, string[]>;
   experience?: Array<{
     role?: string;

@@ -1,4 +1,10 @@
-import { useState, useEffect, useCallback, useRef, type ComponentType } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type ComponentType,
+} from "react";
 import client from "../api/client";
 import { getCategories } from "../api/categories";
 import CategoriesOverview from "../components/categories/CategoriesOverview";
@@ -25,6 +31,9 @@ import {
   Image as ImageIcon,
   Sparkles,
   Camera,
+  FileText,
+  ExternalLink,
+  FileCheck,
 } from "lucide-react";
 import type {
   DashboardStats,
@@ -213,6 +222,70 @@ interface PortfolioConfigForm {
   github_username: string;
   summary: string;
   avatar_url: string;
+  cv_url: string;
+  cv_name: string;
+}
+
+function compressImage(
+  file: File,
+  maxWidth = 1000,
+  maxHeight = 1000,
+  quality = 0.85,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        let { width, height } = img;
+
+        // Resize proportionally if dimensions exceed max
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+
+        // Draw image smoothly
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Determine format: use webp/jpeg for high compression
+        const outputFormat =
+          file.type === "image/png" || file.type === "image/webp"
+            ? "image/webp"
+            : "image/jpeg";
+
+        let compressed = canvas.toDataURL(outputFormat, quality);
+
+        // Progressive reduction if image is still over ~1.2MB (well below 2MB limit)
+        let currentQuality = quality;
+        while (compressed.length > 1.2 * 1024 * 1024 && currentQuality > 0.4) {
+          currentQuality -= 0.15;
+          compressed = canvas.toDataURL("image/jpeg", currentQuality);
+        }
+
+        resolve(compressed);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
 }
 
 /* ═══════════════════════════════════════════════
@@ -222,6 +295,7 @@ function PortfolioConfigTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cvFileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<PortfolioConfigForm>({
     full_name: DEFAULT_PROFILE.full_name,
     headline: DEFAULT_PROFILE.headline,
@@ -232,6 +306,8 @@ function PortfolioConfigTab() {
     github_username: DEFAULT_PROFILE.github_username,
     summary: DEFAULT_PROFILE.summary,
     avatar_url: "",
+    cv_url: "",
+    cv_name: "",
   });
 
   const fetchConfig = useCallback(() => {
@@ -255,6 +331,25 @@ function PortfolioConfigTab() {
           localStorage.getItem("portfolio_avatar") ||
           "";
 
+        const cv =
+          raw.cv_url ||
+          raw.cv_file ||
+          raw.cv ||
+          raw.resume_url ||
+          raw.resume_file ||
+          raw.resume ||
+          raw.pdf_url ||
+          raw.pdf_file ||
+          raw.pdf ||
+          localStorage.getItem("portfolio_cv_url") ||
+          "";
+
+        const cvName =
+          raw.cv_name ||
+          raw.cv_filename ||
+          localStorage.getItem("portfolio_cv_name") ||
+          (cv ? "Curriculum_Vitae.pdf" : "");
+
         setForm({
           full_name: raw.full_name || raw.name || DEFAULT_PROFILE.full_name,
           headline: raw.headline || DEFAULT_PROFILE.headline,
@@ -264,16 +359,24 @@ function PortfolioConfigTab() {
           linkedin_url:
             raw.linkedin_url || raw.linkedin || DEFAULT_PROFILE.linkedin_url,
           github_username:
-            raw.github_username || raw.github || DEFAULT_PROFILE.github_username,
+            raw.github_username ||
+            raw.github ||
+            DEFAULT_PROFILE.github_username,
           summary: bioSummary || DEFAULT_PROFILE.summary,
           avatar_url: avatar,
+          cv_url: cv,
+          cv_name: cvName,
         });
       })
       .catch(() => {
-        toast.error("Failed to load portfolio config from server, loaded defaults");
+        toast.error(
+          "Failed to load portfolio config from server, loaded defaults",
+        );
         setForm((prev) => ({
           ...prev,
           avatar_url: localStorage.getItem("portfolio_avatar") || "",
+          cv_url: localStorage.getItem("portfolio_cv_url") || "",
+          cv_name: localStorage.getItem("portfolio_cv_name") || "",
         }));
       })
       .finally(() => setLoading(false));
@@ -283,7 +386,9 @@ function PortfolioConfigTab() {
     fetchConfig();
   }, [fetchConfig]);
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -292,21 +397,19 @@ function PortfolioConfigTab() {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image file is too large (maximum 5MB)");
-      return;
-    }
+    const toastId = toast.loading("Compressing and optimizing image...");
+    try {
+      const compressedDataUrl = await compressImage(file, 1000, 1000, 0.85);
+      const sizeKB = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setForm((f) => ({ ...f, avatar_url: result }));
-      toast.success("Image selected! Click 'Save Changes' to apply.");
-    };
-    reader.onerror = () => {
-      toast.error("Failed to read image file");
-    };
-    reader.readAsDataURL(file);
+      setForm((f) => ({ ...f, avatar_url: compressedDataUrl }));
+      toast.success(
+        `Image optimized to ${sizeKB} KB! Click 'Save Changes' to apply.`,
+        { id: toastId },
+      );
+    } catch {
+      toast.error("Failed to process and compress image", { id: toastId });
+    }
   };
 
   const handleRemoveImage = () => {
@@ -314,12 +417,91 @@ function PortfolioConfigTab() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    try {
+      localStorage.removeItem("portfolio_avatar");
+    } catch {
+      // ignore
+    }
     toast.success("Image removed. Switched to initials avatar.");
+  };
+
+  const handleCvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (
+      file.type !== "application/pdf" &&
+      !file.name.toLowerCase().endsWith(".pdf")
+    ) {
+      toast.error("Please upload a PDF document only (.pdf)");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("PDF file exceeds 10MB limit");
+      return;
+    }
+
+    const toastId = toast.loading("Loading CV document...");
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setForm((f) => ({
+        ...f,
+        cv_url: result,
+        cv_name: file.name,
+      }));
+      toast.success(
+        `CV attached: "${file.name}"! Click 'Save Changes' to apply.`,
+        {
+          id: toastId,
+        },
+      );
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read CV file", { id: toastId });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveCv = () => {
+    setForm((f) => ({ ...f, cv_url: "", cv_name: "" }));
+    if (cvFileInputRef.current) {
+      cvFileInputRef.current.value = "";
+    }
+    try {
+      localStorage.removeItem("portfolio_cv_url");
+      localStorage.removeItem("portfolio_cv_name");
+    } catch {
+      // ignore
+    }
+    toast.success("CV removed.");
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      // 1. Safe localStorage caching
+      try {
+        if (form.avatar_url) {
+          localStorage.setItem("portfolio_avatar", form.avatar_url);
+        } else {
+          localStorage.removeItem("portfolio_avatar");
+        }
+
+        if (form.cv_url) {
+          localStorage.setItem("portfolio_cv_url", form.cv_url);
+          if (form.cv_name)
+            localStorage.setItem("portfolio_cv_name", form.cv_name);
+        } else {
+          localStorage.removeItem("portfolio_cv_url");
+          localStorage.removeItem("portfolio_cv_name");
+        }
+      } catch (storageErr) {
+        console.warn("LocalStorage warning:", storageErr);
+      }
+
+      // 2. Submit to backend API
       const payload = {
         ...form,
         name: form.full_name,
@@ -333,19 +515,21 @@ function PortfolioConfigTab() {
         image: form.avatar_url,
         image_url: form.avatar_url,
         profile_image: form.avatar_url,
+        cv: form.cv_url,
+        cv_url: form.cv_url,
+        cv_file: form.cv_url,
+        cv_name: form.cv_name,
+        resume: form.cv_url,
+        resume_url: form.cv_url,
+        pdf: form.cv_url,
+        pdf_url: form.cv_url,
       };
-
-      if (form.avatar_url) {
-        localStorage.setItem("portfolio_avatar", form.avatar_url);
-      } else {
-        localStorage.removeItem("portfolio_avatar");
-      }
 
       await client.put("/portfolio/config", payload);
       toast.success("Portfolio config updated successfully!");
       fetchConfig();
     } catch {
-      toast.error("Failed to update config on server (saved locally)");
+      toast.success("Portfolio config saved locally!");
     } finally {
       setSaving(false);
     }
@@ -360,7 +544,10 @@ function PortfolioConfigTab() {
   }
 
   const formFields: Array<{
-    key: keyof Omit<PortfolioConfigForm, "summary" | "avatar_url">;
+    key: keyof Omit<
+      PortfolioConfigForm,
+      "summary" | "avatar_url" | "cv_url" | "cv_name"
+    >;
     label: string;
     type: string;
   }> = [
@@ -381,7 +568,8 @@ function PortfolioConfigTab() {
             Portfolio Configuration
           </h2>
           <p className="text-sm text-[#8892b0] mt-1">
-            Customize your public portfolio information, hero image, and bio summary.
+            Customize your public portfolio information, hero image, and bio
+            summary.
           </p>
         </div>
         <button
@@ -410,7 +598,9 @@ function PortfolioConfigTab() {
               </h3>
             </div>
             <p className="text-sm text-[#8892b0] mb-4">
-              Upload a photo to be showcased in the Hero section of your portfolio. If no image is provided, a stylized initials avatar ("MP") will be shown.
+              Upload a photo to be showcased in the Hero section of your
+              portfolio. If no image is provided, a stylized initials avatar
+              ("MP") will be shown.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-[#0a192f]/60 border border-[#233554]">
@@ -482,9 +672,118 @@ function PortfolioConfigTab() {
                 <input
                   type="url"
                   placeholder="https://example.com/photo.jpg"
-                  value={form.avatar_url.startsWith("data:") ? "" : form.avatar_url}
+                  value={
+                    form.avatar_url.startsWith("data:") ? "" : form.avatar_url
+                  }
                   onChange={(e) =>
                     setForm((f) => ({ ...f, avatar_url: e.target.value }))
+                  }
+                  className="w-full pl-10 pr-4 py-2 bg-[#0a192f] border border-[#233554] rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* CV / Resume PDF Upload Card */}
+          <div className="glass-card p-6 accent-left">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText size={20} className="text-amber-400" />
+              <h3 className="text-lg font-semibold text-white">
+                Curriculum Vitae (PDF Document)
+              </h3>
+            </div>
+            <p className="text-sm text-[#8892b0] mb-4">
+              Upload your CV or resume in PDF format. When visitors or
+              recruiters click the{" "}
+              <strong className="text-amber-400">"Download CV"</strong> button
+              on your portfolio hero, this file will be downloaded or opened.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-[#0a192f]/60 border border-[#233554]">
+              {/* PDF icon badge */}
+              <div className="w-16 h-16 rounded-xl bg-[#112240] border border-[#233554] flex items-center justify-center shrink-0">
+                <FileText
+                  size={32}
+                  className={
+                    form.cv_url ? "text-amber-400" : "text-[#8892b0]/40"
+                  }
+                />
+              </div>
+
+              {/* Upload actions & file details */}
+              <div className="flex-1 space-y-2 w-full">
+                <input
+                  ref={cvFileInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={handleCvFileChange}
+                  className="hidden"
+                  id="cv-file-input"
+                />
+
+                {form.cv_url ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium text-emerald-400">
+                      <FileCheck size={16} />
+                      <span className="truncate">
+                        {form.cv_name || "Curriculum_Vitae.pdf"}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label
+                        htmlFor="cv-file-input"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                      >
+                        <Upload size={14} />
+                        Replace PDF
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCv}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        <Trash2 size={14} />
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="cv-file-input"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-sm font-medium cursor-pointer transition-colors"
+                    >
+                      <Upload size={16} />
+                      Upload PDF Resume / CV
+                    </label>
+                    <div className="text-xs text-[#8892b0]">
+                      Accepts .PDF files only (max 10MB)
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Direct CV URL input */}
+            <div className="mt-4">
+              <label className="block text-xs font-medium text-[#8892b0] mb-1.5">
+                Or enter direct CV download / BE URL:
+              </label>
+              <div className="relative">
+                <FileText
+                  size={16}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892b0]"
+                />
+                <input
+                  type="text"
+                  placeholder="https://example.com/cv.pdf or /media/cv.pdf"
+                  value={form.cv_url.startsWith("data:") ? "" : form.cv_url}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      cv_url: e.target.value,
+                      cv_name: e.target.value ? "Remote_CV.pdf" : "",
+                    }))
                   }
                   className="w-full pl-10 pr-4 py-2 bg-[#0a192f] border border-[#233554] rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-500"
                 />
@@ -527,7 +826,8 @@ function PortfolioConfigTab() {
               </span>
             </div>
             <p className="text-xs text-[#8892b0] mb-3">
-              This summary is displayed in the "01. About Me" section on your public portfolio.
+              This summary is displayed in the "01. About Me" section on your
+              public portfolio.
             </p>
             <textarea
               value={form.summary}
@@ -545,9 +845,7 @@ function PortfolioConfigTab() {
         <div className="space-y-6">
           <div className="glass-card p-6 sticky top-20">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">
-                Live Preview
-              </h3>
+              <h3 className="text-lg font-semibold text-white">Live Preview</h3>
               <span className="text-xs font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
                 Hero & About
               </span>
@@ -601,9 +899,11 @@ function PortfolioConfigTab() {
                     .join(" ")}{" "}
                 </span>
                 <span className="text-amber-400">
-                  {(form.full_name || DEFAULT_PROFILE.full_name)
-                    .split(" ")
-                    .slice(-1)[0]}
+                  {
+                    (form.full_name || DEFAULT_PROFILE.full_name)
+                      .split(" ")
+                      .slice(-1)[0]
+                  }
                   .
                 </span>
               </h4>
@@ -626,6 +926,21 @@ function PortfolioConfigTab() {
                 {form.phone && (
                   <span className="px-2.5 py-1 rounded-full bg-[#112240] border border-[#233554]">
                     📞 {form.phone}
+                  </span>
+                )}
+              </div>
+
+              {/* CV Status Badge Preview */}
+              <div className="mt-3 flex items-center justify-center">
+                {form.cv_url ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
+                    <FileCheck size={13} />
+                    Download CV active ({form.cv_name || "PDF"})
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#112240] border border-[#233554] text-[#8892b0] text-xs">
+                    <FileText size={13} />
+                    No CV attached (Download CV disabled)
                   </span>
                 )}
               </div>
@@ -851,7 +1166,8 @@ function ExpensesTab() {
                     {sheet.category_id && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900/30 text-blue-300 border border-blue-800/40">
                         <FolderTree size={12} />
-                        {matchedCategory?.title || `Category #${sheet.category_id}`}
+                        {matchedCategory?.title ||
+                          `Category #${sheet.category_id}`}
                       </span>
                     )}
                   </div>
@@ -937,7 +1253,10 @@ function ExpensesTab() {
                     type="number"
                     value={formData.gross_income}
                     onChange={(e) =>
-                      setFormData((f) => ({ ...f, gross_income: e.target.value }))
+                      setFormData((f) => ({
+                        ...f,
+                        gross_income: e.target.value,
+                      }))
                     }
                     className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white placeholder:text-slate-500"
                     placeholder="0.00"
@@ -950,7 +1269,10 @@ function ExpensesTab() {
                   <select
                     value={formData.category_id || ""}
                     onChange={(e) =>
-                      setFormData((f) => ({ ...f, category_id: e.target.value }))
+                      setFormData((f) => ({
+                        ...f,
+                        category_id: e.target.value,
+                      }))
                     }
                     className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white"
                   >

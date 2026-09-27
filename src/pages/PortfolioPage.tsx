@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import client from "../api/client";
+import toast from "react-hot-toast";
 import {
   MapPin,
   Mail,
@@ -68,13 +69,7 @@ const SKILLS: SkillCategory[] = [
     category: "Frontend",
     icon: Layers,
     color: "purple",
-    items: [
-      "React",
-      "Svelte",
-      "Tailwind CSS",
-      "Material UI",
-      "Bootstrap",
-    ],
+    items: ["React", "Svelte", "Tailwind CSS", "Material UI", "Bootstrap"],
   },
   {
     category: "Backend",
@@ -310,15 +305,23 @@ export default function PortfolioPage() {
         params: { username: "MarkParayno1004", limit: 10 },
       })
       .then((res) => {
-        const repoList: GitHubRepo[] = (res.data || []).map((r: Record<string, unknown>) => ({
-          id: Number(r.id),
-          name: String(r.name || ""),
-          html_url: String(r.html_url || ""),
-          description: r.description ? String(r.description) : null,
-          language: r.language ? String(r.language) : null,
-          stars: typeof r.stars === "number" ? r.stars : Number(r.stargazers_count || 0),
-          forks: typeof r.forks === "number" ? r.forks : Number(r.forks_count || 0),
-        }));
+        const repoList: GitHubRepo[] = (res.data || []).map(
+          (r: Record<string, unknown>) => ({
+            id: Number(r.id),
+            name: String(r.name || ""),
+            html_url: String(r.html_url || ""),
+            description: r.description ? String(r.description) : null,
+            language: r.language ? String(r.language) : null,
+            stars:
+              typeof r.stars === "number"
+                ? r.stars
+                : Number(r.stargazers_count || 0),
+            forks:
+              typeof r.forks === "number"
+                ? r.forks
+                : Number(r.forks_count || 0),
+          }),
+        );
         setRepos(repoList);
       })
       .catch(() => {})
@@ -335,7 +338,28 @@ export default function PortfolioPage() {
       localStorage.getItem("portfolio_avatar") ||
       "";
 
-    if (!config) return { ...PROFILE, avatar };
+    const rawCv =
+      config?.cv_url ||
+      config?.cv_file ||
+      config?.cv ||
+      config?.resume_url ||
+      config?.resume_file ||
+      config?.resume ||
+      config?.pdf_url ||
+      config?.pdf_file ||
+      config?.pdf ||
+      localStorage.getItem("portfolio_cv_url") ||
+      "";
+
+    const cv_url = rawCv
+      ? rawCv.startsWith("http") ||
+        rawCv.startsWith("data:") ||
+        rawCv.startsWith("blob:")
+        ? rawCv
+        : `${import.meta.env.VITE_API_BASE_URL ? "" : "/"}${rawCv}`
+      : "";
+
+    if (!config) return { ...PROFILE, avatar, cv_url };
     return {
       name: config.full_name || config.name || PROFILE.name,
       headline: config.headline || PROFILE.headline,
@@ -350,6 +374,7 @@ export default function PortfolioPage() {
         : config.github || PROFILE.github,
       summary: config.about_summary || config.summary || PROFILE.summary,
       avatar,
+      cv_url,
     };
   }, [config]);
 
@@ -462,7 +487,12 @@ export default function PortfolioPage() {
               </p>
 
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-4">
-                <span className="text-white">{(profile.name || PROFILE.name).split(" ").slice(0, -1).join(" ")}</span>
+                <span className="text-white">
+                  {(profile.name || PROFILE.name)
+                    .split(" ")
+                    .slice(0, -1)
+                    .join(" ")}
+                </span>
                 <br />
                 <span className="text-amber-400">
                   {(profile.name || PROFILE.name).split(" ").slice(-1)[0]}.
@@ -495,7 +525,20 @@ export default function PortfolioPage() {
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-3">
                 <a
-                  href="#"
+                  href={profile.cv_url || "#"}
+                  download={
+                    profile.cv_url && !profile.cv_url.startsWith("http")
+                      ? `${(profile.name || "Mark_Parayno").replace(/\s+/g, "_")}_CV.pdf`
+                      : undefined
+                  }
+                  target={profile.cv_url ? "_blank" : undefined}
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    if (!profile.cv_url) {
+                      e.preventDefault();
+                      toast.error("CV file has not been uploaded yet");
+                    }
+                  }}
                   className="inline-flex items-center gap-2 px-7 py-3 bg-amber-500 hover:bg-amber-600 text-[#0a192f] font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 active:scale-[0.98]"
                 >
                   <Download size={18} />
@@ -770,10 +813,7 @@ export default function PortfolioPage() {
           </div>
         ) : (
           <div className="text-center py-12 reveal">
-            <Github
-              size={48}
-              className="mx-auto text-[#233554] mb-4"
-            />
+            <Github size={48} className="mx-auto text-[#233554] mb-4" />
             <p className="text-[#8892b0]">
               {repos.length === 0
                 ? "Unable to load repositories. Visit GitHub directly."
