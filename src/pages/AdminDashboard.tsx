@@ -95,10 +95,10 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
     : [];
 
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-900/20 text-blue-400",
-    green: "bg-emerald-900/20 text-emerald-400",
-    purple: "bg-purple-900/20 text-purple-400",
-    amber: "bg-amber-900/20 text-amber-400",
+    blue: "bg-teal-500/10 text-teal-400 border border-teal-500/20",
+    green: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+    purple: "bg-violet-500/10 text-violet-400 border border-violet-500/20",
+    amber: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
   };
 
   return (
@@ -109,9 +109,9 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="glass-card p-6 animate-pulse">
-              <div className="h-10 w-10 bg-slate-700 rounded-xl mb-3" />
-              <div className="h-4 bg-slate-700 rounded w-20 mb-2" />
-              <div className="h-6 bg-slate-700 rounded w-16" />
+              <div className="h-10 w-10 bg-[#233554] rounded-xl mb-3" />
+              <div className="h-4 bg-[#233554] rounded w-20 mb-2" />
+              <div className="h-6 bg-[#233554] rounded w-16" />
             </div>
           ))}
         </div>
@@ -120,13 +120,13 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
           {statCards.map((card) => {
             const Icon = card.icon;
             return (
-              <div key={card.label} className="glass-card p-6">
+              <div key={card.label} className="glass-card p-6 accent-left">
                 <div
                   className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${colorClasses[card.color] || colorClasses.blue}`}
                 >
                   <Icon size={24} />
                 </div>
-                <p className="text-sm text-slate-400">{card.label}</p>
+                <p className="text-sm text-[#8892b0]">{card.label}</p>
                 <p className="text-2xl font-bold text-white mt-1">
                   {card.value}
                 </p>
@@ -173,14 +173,14 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
                 onClick={() => onNavigate(action.tab)}
                 className="glass-card p-5 text-left group"
               >
-                <Icon size={24} className="text-blue-400 mb-3" />
-                <h4 className="font-semibold text-white group-hover:text-blue-400 transition-colors">
+                <Icon size={24} className="text-amber-400 mb-3" />
+                <h4 className="font-semibold text-white group-hover:text-amber-400 transition-colors">
                   {action.label}
                 </h4>
-                <p className="text-sm text-slate-400 mt-1">{action.desc}</p>
+                <p className="text-sm text-[#8892b0] mt-1">{action.desc}</p>
                 <ArrowRight
                   size={16}
-                  className="mt-3 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all"
+                  className="mt-3 text-[#8892b0] group-hover:text-amber-400 group-hover:translate-x-1 transition-all"
                 />
               </button>
             );
@@ -1533,10 +1533,10 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 pt-20">
+    <div className="min-h-screen bg-[#0a192f] pt-20 text-[#e2e8f0]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tab Navigation */}
-        <div className="flex overflow-x-auto gap-1 mb-8 pb-1 scrollbar-none">
+        <div className="flex overflow-x-auto gap-2 mb-8 pb-1 scrollbar-none">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1546,8 +1546,8 @@ export default function AdminDashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                   isActive
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                    ? "bg-amber-500 text-[#0a192f] font-semibold shadow-lg shadow-amber-500/20"
+                    : "text-[#8892b0] hover:bg-[#112240] hover:text-amber-300 border border-transparent hover:border-[#233554]"
                 }`}
               >
                 <Icon size={18} />
