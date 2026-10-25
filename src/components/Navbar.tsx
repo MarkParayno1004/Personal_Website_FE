@@ -5,10 +5,11 @@ import {
   Menu,
   X,
   Shield,
+  PiggyBank,
   LogOut,
   User,
   ChevronDown,
-  FolderTree,
+  Settings,
 } from "lucide-react";
 
 interface NavLinkItem {
@@ -33,12 +34,14 @@ export default function Navbar() {
   const location = useLocation();
   const isAdminPortal =
     location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/categories");
+    location.pathname.startsWith("/categories") ||
+    location.pathname.startsWith("/savings") ||
+    location.pathname.startsWith("/account");
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
     setUserMenuOpen(false);
     setMobileMenuOpen(false);
+    await logout();
     navigate("/");
   };
 
@@ -57,7 +60,7 @@ export default function Navbar() {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-[#0a192f]/85 backdrop-blur-xl shadow-lg shadow-black/20 border-b border-[#233554]/60"
+          ? "bg-[#15121c]/85 backdrop-blur-xl shadow-lg shadow-black/20 border-b border-[#342c45]/60"
           : "bg-transparent"
       }`}
     >
@@ -69,7 +72,7 @@ export default function Navbar() {
             onClick={closeMenus}
             className="flex items-center gap-2.5 text-xl font-bold text-white hover:text-amber-400 transition-colors"
           >
-            <div className="w-8 h-8 bg-[#112240] rounded-lg flex items-center justify-center text-amber-400 text-sm font-bold border border-amber-500/30 shadow-md shadow-amber-500/10">
+            <div className="w-8 h-8 bg-[#1f1a2b] rounded-lg flex items-center justify-center text-amber-400 text-sm font-bold border border-amber-500/30 shadow-md shadow-amber-500/10">
               MP
             </div>
             {isAdminPortal ? "Admin Portal" : "Mark Philip"}
@@ -78,15 +81,12 @@ export default function Navbar() {
           {/* Desktop Nav Links */}
           {!isAdminPortal && (
             <div className="hidden md:flex items-center gap-1">
-              {navLinks.map((link, i) => (
+              {navLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
-                  className="group px-3 py-2 text-sm font-medium text-[#8892b0] hover:text-amber-400 rounded-lg hover:bg-amber-500/5 transition-all duration-200"
+                  className="group px-3 py-2 text-sm font-medium text-[#a59cb8] hover:text-amber-400 rounded-lg hover:bg-amber-500/5 transition-all duration-200"
                 >
-                  <span className="text-amber-400/70 font-mono text-xs mr-1">
-                    0{i + 1}.
-                  </span>
                   {link.label}
                 </a>
               ))}
@@ -107,25 +107,41 @@ export default function Navbar() {
                 <ChevronDown size={14} />
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-52 bg-[#112240] rounded-xl shadow-xl border border-[#233554] py-1 animate-[slideDown_0.2s_ease-out]">
+                <div className="absolute right-0 mt-2 w-52 bg-[#1f1a2b] rounded-xl shadow-xl border border-[#342c45] py-1 animate-[slideDown_0.2s_ease-out]">
                   <Link
                     to="/admin"
                     onClick={closeMenus}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#e2e8f0] hover:bg-amber-500/10 hover:text-amber-300"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#ece8f4] hover:bg-amber-500/10 hover:text-amber-300"
                   >
                     <Shield size={16} />
                     Admin Dashboard
+                  </Link>
+                  <Link
+                    to="/savings"
+                    onClick={closeMenus}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#ece8f4] hover:bg-emerald-500/10 hover:text-emerald-300"
+                  >
+                    <PiggyBank size={16} className="text-emerald-400" />
+                    Savings Management
                   </Link>
                   {isAdminPortal && (
                     <Link
                       to="/"
                       onClick={closeMenus}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#e2e8f0] hover:bg-amber-500/10 hover:text-amber-300"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#ece8f4] hover:bg-amber-500/10 hover:text-amber-300"
                     >
                       <User size={16} />
                       View Portfolio
                     </Link>
                   )}
+                  <Link
+                    to="/account"
+                    onClick={closeMenus}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#ece8f4] hover:bg-amber-500/10 hover:text-amber-300"
+                  >
+                    <Settings size={16} />
+                    Account settings
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10"
@@ -142,7 +158,7 @@ export default function Navbar() {
           {!isAdminPortal && (
             <button
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="md:hidden p-2 rounded-lg text-[#8892b0] hover:bg-[#112240] hover:text-amber-400 transition-all"
+              className="md:hidden p-2 rounded-lg text-[#a59cb8] hover:bg-[#1f1a2b] hover:text-amber-400 transition-all"
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -152,18 +168,15 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && !isAdminPortal && (
-        <div className="md:hidden bg-[#0a192f]/95 backdrop-blur-xl border-t border-[#233554] animate-[slideDown_0.2s_ease-out]">
+        <div className="md:hidden bg-[#15121c]/95 backdrop-blur-xl border-t border-[#342c45] animate-[slideDown_0.2s_ease-out]">
           <div className="px-4 py-3 space-y-1">
-            {navLinks.map((link, i) => (
+            {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={closeMenus}
-                className="block px-3 py-2.5 text-sm font-medium text-[#8892b0] hover:text-amber-400 rounded-lg hover:bg-amber-500/5 transition-all"
+                className="block px-3 py-2.5 text-sm font-medium text-[#a59cb8] hover:text-amber-400 rounded-lg hover:bg-amber-500/5 transition-all"
               >
-                <span className="text-amber-400/70 font-mono text-xs mr-2">
-                  0{i + 1}.
-                </span>
                 {link.label}
               </a>
             ))}

@@ -15,15 +15,17 @@ import {
   RefreshCw,
   X,
   Layers,
+  Link2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   getCategories,
-  createCategory,
   updateCategory,
   deleteCategory,
 } from "../../api/categories";
-import type { Category, CreateCategoryPayload } from "../../types";
+import CreateCategoryModal from "./CreateCategoryModal";
+import ImportItemsModal from "./ImportItemsModal";
+import type { Category } from "../../types";
 
 interface CategoriesOverviewProps {
   embedded?: boolean;
@@ -46,21 +48,8 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Create form state
-  const [newTitle, setNewTitle] = useState("");
-  const [includeExpense, setIncludeExpense] = useState(false);
-  const [expenseForm, setExpenseForm] = useState({
-    title: "",
-    gross_income: "",
-    items: [{ description: "", amount: "" }],
-    tax_deductions: [{ description: "", amount: "" }],
-  });
-  const [includeMedication, setIncludeMedication] = useState(false);
-  const [medicationForm, setMedicationForm] = useState({
-    name: "",
-    cost: "",
-    doses_taken: "0",
-  });
+  // Import items modal state for specific category card action
+  const [importModalCategory, setImportModalCategory] = useState<Category | null>(null);
 
   const refreshCategoryData = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -121,85 +110,6 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
     0
   );
 
-  const resetCreateForm = () => {
-    setNewTitle("");
-    setIncludeExpense(false);
-    setExpenseForm({
-      title: "",
-      gross_income: "",
-      items: [{ description: "", amount: "" }],
-      tax_deductions: [{ description: "", amount: "" }],
-    });
-    setIncludeMedication(false);
-    setMedicationForm({
-      name: "",
-      cost: "",
-      doses_taken: "0",
-    });
-  };
-
-  const handleOpenCreate = () => {
-    resetCreateForm();
-    setShowCreateModal(true);
-  };
-
-  const handleCreateSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    const trimmedTitle = newTitle.trim();
-    if (!trimmedTitle) {
-      toast.error("Category title is required");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const payload: CreateCategoryPayload = {
-        title: trimmedTitle,
-      };
-
-      if (includeExpense && expenseForm.title.trim()) {
-        payload.expenses = [
-          {
-            title: expenseForm.title.trim(),
-            gross_income: parseFloat(expenseForm.gross_income) || 0,
-            items: expenseForm.items
-              .filter((i) => i.description.trim())
-              .map((i) => ({
-                description: i.description.trim(),
-                amount: parseFloat(i.amount) || 0,
-              })),
-            tax_deductions: expenseForm.tax_deductions
-              .filter((d) => d.description.trim())
-              .map((d) => ({
-                description: d.description.trim(),
-                amount: parseFloat(d.amount) || 0,
-              })),
-          },
-        ];
-      }
-
-      if (includeMedication && medicationForm.name.trim()) {
-        payload.medications = [
-          {
-            name: medicationForm.name.trim(),
-            cost: parseFloat(medicationForm.cost) || 0,
-            doses_taken: parseInt(medicationForm.doses_taken) || 0,
-          },
-        ];
-      }
-
-      await createCategory(payload);
-      toast.success("Category created successfully!");
-      setShowCreateModal(false);
-      resetCreateForm();
-      refreshCategoryData(true);
-    } catch {
-      toast.error("Failed to create category");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleOpenEdit = (category: Category, e: React.MouseEvent) => {
     e.stopPropagation();
     setCategoryToEdit(category);
@@ -241,7 +151,7 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
     setIsDeleting(true);
     try {
       await deleteCategory(categoryToDelete.id);
-      toast.success("Category and nested items deleted");
+      toast.success("Category deleted");
       setShowDeleteModal(false);
       setCategoryToDelete(null);
       refreshCategoryData(true);
@@ -252,36 +162,9 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
     }
   };
 
-  // Helper for dynamic expense rows
-  const addExpenseRow = (type: "items" | "tax_deductions") => {
-    setExpenseForm((prev) => ({
-      ...prev,
-      [type]: [...prev[type], { description: "", amount: "" }],
-    }));
-  };
-
-  const removeExpenseRow = (
-    type: "items" | "tax_deductions",
-    index: number
-  ) => {
-    setExpenseForm((prev) => ({
-      ...prev,
-      [type]: prev[type].filter((_, i) => i !== index),
-    }));
-  };
-
-  const updateExpenseRow = (
-    type: "items" | "tax_deductions",
-    index: number,
-    field: "description" | "amount",
-    value: string
-  ) => {
-    setExpenseForm((prev) => ({
-      ...prev,
-      [type]: prev[type].map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      ),
-    }));
+  const handleOpenImport = (category: Category, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImportModalCategory(category);
   };
 
   return (
@@ -290,11 +173,11 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
-            <FolderTree className="text-blue-400" size={28} />
+            <FolderTree className="text-amber-400" size={28} />
             Categories Management
           </h2>
           <p className="text-sm text-slate-400 mt-1">
-            Organize expenses and medications under unified categories with aggregated financials.
+            Organize expenses and medications under unified categories with aggregated financials and item linking.
           </p>
         </div>
 
@@ -307,14 +190,14 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
           >
             <RefreshCw
               size={16}
-              className={refreshing ? "animate-spin text-blue-400" : ""}
+              className={refreshing ? "animate-spin text-amber-400" : ""}
             />
             <span className="hidden sm:inline">Refresh</span>
           </button>
 
           <button
-            onClick={handleOpenCreate}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-95"
+            onClick={() => setShowCreateModal(true)}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-95 text-sm"
           >
             <Plus size={18} />
             Create Category
@@ -386,11 +269,11 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
       {/* Category Cards Grid */}
       {loading ? (
         <div className="flex justify-center py-24">
-          <Loader2 size={36} className="animate-spin text-blue-500" />
+          <Loader2 size={36} className="animate-spin text-amber-500" />
         </div>
       ) : categories.length === 0 ? (
         <div className="glass-card p-12 text-center max-w-xl mx-auto my-6 border border-dashed border-slate-800">
-          <div className="w-16 h-16 rounded-2xl bg-blue-900/20 text-blue-400 border border-blue-800/40 flex items-center justify-center mx-auto mb-4 shadow-inner">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center mx-auto mb-4 shadow-inner">
             <FolderTree size={32} />
           </div>
           <h3 className="text-xl font-bold text-white mb-2">No categories yet</h3>
@@ -398,8 +281,8 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
             Create your first category to group and organize expenses and medications in one place.
           </p>
           <button
-            onClick={handleOpenCreate}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25"
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/20 text-sm"
           >
             <Plus size={18} />
             Create Category
@@ -422,16 +305,16 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
               <div
                 key={category.id}
                 onClick={() => navigate(`/categories/${category.id}`)}
-                className="glass-card p-6 flex flex-col justify-between hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+                className="glass-card p-6 flex flex-col justify-between hover:border-amber-500/40 hover:shadow-xl hover:shadow-amber-500/5 transition-all duration-300 cursor-pointer group relative overflow-hidden"
               >
                 {/* Subtle top indicator */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-teal-500 to-emerald-500 opacity-60 group-hover:opacity-100 transition-opacity" />
 
                 <div>
-                  {/* Title & Quick Actions */}
+                  {/* Title & Card Actions */}
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold text-white truncate group-hover:text-blue-400 transition-colors">
+                      <h3 className="text-lg font-bold text-white truncate group-hover:text-amber-400 transition-colors">
                         {category.title}
                       </h3>
                       <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
@@ -441,6 +324,14 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {/* Direct Import Items button */}
+                      <button
+                        onClick={(e) => handleOpenImport(category, e)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 transition-colors"
+                        title="Import / Link items"
+                      >
+                        <Link2 size={15} />
+                      </button>
                       <button
                         onClick={(e) => handleOpenEdit(category, e)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800/80 transition-colors"
@@ -458,7 +349,7 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
                     </div>
                   </div>
 
-                  {/* Badges / Aggregate Pills */}
+                  {/* Badges / Aggregate Breakdown */}
                   <div className="grid grid-cols-2 gap-2 my-4">
                     <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl p-2.5">
                       <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
@@ -482,9 +373,9 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
                   </div>
 
                   {/* Combined Total Spend Highlight */}
-                  <div className="bg-blue-950/30 border border-blue-900/40 rounded-xl p-3 flex items-center justify-between mb-4">
-                    <span className="text-xs font-medium text-blue-300">Combined Total</span>
-                    <span className="text-base font-bold text-blue-200">
+                  <div className="bg-amber-950/20 border border-amber-900/30 rounded-xl p-3 flex items-center justify-between mb-4">
+                    <span className="text-xs font-medium text-amber-300">Combined Total</span>
+                    <span className="text-base font-bold text-amber-200">
                       ₱{(category.total_amount || 0).toLocaleString()}
                     </span>
                   </div>
@@ -496,7 +387,7 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
                     {expCount} {expCount === 1 ? "Expense" : "Expenses"} • {medCount}{" "}
                     {medCount === 1 ? "Medication" : "Medications"}
                   </span>
-                  <span className="flex items-center gap-1 text-blue-400 group-hover:translate-x-1 transition-transform font-medium">
+                  <span className="flex items-center gap-1 text-amber-400 group-hover:translate-x-1 transition-transform font-medium">
                     View details <ArrowRight size={14} />
                   </span>
                 </div>
@@ -506,245 +397,35 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
         </div>
       )}
 
-      {/* ═════════════════════════════════════════════════════
-          CREATE CATEGORY MODAL
-          ═════════════════════════════════════════════════════ */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-          <div className="glass-card p-6 max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto border-slate-700 animate-[scaleIn_0.2s_ease-out]">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Plus size={20} className="text-blue-400" />
-                Create New Category
-              </h3>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
+      {/* CREATE CATEGORY MODAL */}
+      <CreateCategoryModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          refreshCategoryData(true);
+        }}
+      />
 
-            <form onSubmit={handleCreateSubmit} className="space-y-6">
-              {/* Category Title */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-200 mb-2">
-                  Category Title <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Monthly Living & Healthcare, Freelance & Wellness"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Optional Inline Expense */}
-              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm font-medium text-slate-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={includeExpense}
-                      onChange={(e) => setIncludeExpense(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>Add initial Expense Sheet (Optional)</span>
-                  </label>
-                  {includeExpense && (
-                    <Receipt size={16} className="text-emerald-400" />
-                  )}
-                </div>
-
-                {includeExpense && (
-                  <div className="space-y-4 pt-3 border-t border-slate-800/80">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
-                          Sheet Title
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. September Salary & Expenses"
-                          value={expenseForm.title}
-                          onChange={(e) =>
-                            setExpenseForm((f) => ({ ...f, title: e.target.value }))
-                          }
-                          className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
-                          Gross Income (₱)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={expenseForm.gross_income}
-                          onChange={(e) =>
-                            setExpenseForm((f) => ({
-                              ...f,
-                              gross_income: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Expense Items */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-slate-400">Expense Items</span>
-                        <button
-                          type="button"
-                          onClick={() => addExpenseRow("items")}
-                          className="text-xs text-blue-400 hover:text-blue-300 font-medium"
-                        >
-                          + Add Row
-                        </button>
-                      </div>
-                      {expenseForm.items.map((item, idx) => (
-                        <div key={idx} className="flex gap-2 mb-2">
-                          <input
-                            type="text"
-                            placeholder="Description"
-                            value={item.description}
-                            onChange={(e) =>
-                              updateExpenseRow("items", idx, "description", e.target.value)
-                            }
-                            className="flex-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white"
-                          />
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="Amount"
-                            value={item.amount}
-                            onChange={(e) =>
-                              updateExpenseRow("items", idx, "amount", e.target.value)
-                            }
-                            className="w-24 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white"
-                          />
-                          {expenseForm.items.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeExpenseRow("items", idx)}
-                              className="p-1 text-slate-400 hover:text-red-400"
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Optional Inline Medication */}
-              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm font-medium text-slate-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={includeMedication}
-                      onChange={(e) => setIncludeMedication(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>Add initial Medication (Optional)</span>
-                  </label>
-                  {includeMedication && <Pill size={16} className="text-purple-400" />}
-                </div>
-
-                {includeMedication && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-800/80">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-400 mb-1">
-                        Medication Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Multivitamins"
-                        value={medicationForm.name}
-                        onChange={(e) =>
-                          setMedicationForm((f) => ({ ...f, name: e.target.value }))
-                        }
-                        className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-400 mb-1">
-                        Cost per Dose (₱)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={medicationForm.cost}
-                        onChange={(e) =>
-                          setMedicationForm((f) => ({ ...f, cost: e.target.value }))
-                        }
-                        className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-400 mb-1">
-                        Doses Taken
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={medicationForm.doses_taken}
-                        onChange={(e) =>
-                          setMedicationForm((f) => ({
-                            ...f,
-                            doses_taken: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Form Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  disabled={isSaving}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 transition-all"
-                >
-                  {isSaving && <Loader2 size={16} className="animate-spin" />}
-                  Create Category
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* IMPORT / LINK ITEMS MODAL FOR CATEGORY CARD */}
+      {importModalCategory && (
+        <ImportItemsModal
+          isOpen={!!importModalCategory}
+          onClose={() => setImportModalCategory(null)}
+          categoryId={importModalCategory.id}
+          categoryTitle={importModalCategory.title}
+          onSuccess={() => {
+            refreshCategoryData(true);
+          }}
+        />
       )}
 
-      {/* ═════════════════════════════════════════════════════
-          EDIT TITLE MODAL
-          ═════════════════════════════════════════════════════ */}
+      {/* EDIT TITLE MODAL */}
       {showEditModal && categoryToEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="glass-card p-6 max-w-md w-full border-slate-700 animate-[scaleIn_0.2s_ease-out]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Edit3 size={18} className="text-blue-400" />
+                <Edit3 size={18} className="text-amber-400" />
                 Edit Category Title
               </h3>
               <button
@@ -765,7 +446,7 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
                   required
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-amber-500"
                 />
               </div>
 
@@ -781,7 +462,7 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-lg shadow-blue-500/25"
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-[#15121c] transition-all shadow-lg shadow-amber-500/20"
                 >
                   {isSaving && <Loader2 size={15} className="animate-spin" />}
                   Save Changes
@@ -792,35 +473,32 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
         </div>
       )}
 
-      {/* ═════════════════════════════════════════════════════
-          CASCADE DELETE WARNING MODAL
-          ═════════════════════════════════════════════════════ */}
+      {/* CASCADE DELETE WARNING MODAL */}
       {showDeleteModal && categoryToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="glass-card p-6 max-w-md w-full border-red-900/50 bg-slate-900/95 animate-[scaleIn_0.2s_ease-out]">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-red-900/30 border border-red-800/40 text-red-400 flex items-center justify-center shrink-0">
-                <AlertTriangle size={24} />
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-red-900/30 text-red-400 border border-red-800/40 shrink-0">
+                <AlertTriangle size={22} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Delete Category?</h3>
-                <p className="text-sm text-slate-300 mt-1">
-                  Are you sure you want to delete <strong className="text-white">"{categoryToDelete.title}"</strong>?
+                <h3 className="text-lg font-bold text-white">Delete Category</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Are you sure you want to delete "{categoryToDelete.title}"?
                 </p>
               </div>
             </div>
 
-            <div className="bg-red-950/40 border border-red-900/40 rounded-xl p-3.5 mb-6 text-xs text-red-200">
-              <strong className="block font-semibold mb-1">Cascade Delete Warning:</strong>
-              This action is permanent and will cascade-delete all associated expenses ({categoryToDelete.expenses?.length || 0}) and medications ({categoryToDelete.medications?.length || 0}) under this category.
+            <div className="p-3.5 rounded-xl bg-red-950/20 border border-red-900/30 text-xs text-red-300 leading-relaxed mb-6">
+              ⚠️ <strong>Warning:</strong> Deleting this category will cascade and remove all associated expenses and medications inside it.
             </div>
 
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 rounded-xl text-sm text-slate-300 hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -828,9 +506,9 @@ export default function CategoriesOverview({ embedded: _embedded = false }: Cate
                 type="button"
                 onClick={handleDeleteConfirm}
                 disabled={isDeleting}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/25 transition-all"
+                className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/25 transition-all"
               >
-                {isDeleting && <Loader2 size={16} className="animate-spin" />}
+                {isDeleting && <Loader2 size={15} className="animate-spin" />}
                 Delete Category
               </button>
             </div>

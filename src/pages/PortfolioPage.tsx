@@ -1,11 +1,9 @@
-import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import client from "../api/client";
-import toast from "react-hot-toast";
 import {
   MapPin,
   Mail,
   Phone,
-  Download,
   Star,
   GitFork,
   Calendar,
@@ -158,10 +156,10 @@ const colorMap: Record<
     badge: "bg-amber-500/10 text-amber-300 border border-amber-500/15",
   },
   purple: {
-    bg: "bg-violet-500/10",
-    text: "text-violet-400",
-    border: "border-violet-500/20",
-    badge: "bg-violet-500/10 text-violet-300 border border-violet-500/15",
+    bg: "bg-fuchsia-500/10",
+    text: "text-fuchsia-400",
+    border: "border-fuchsia-500/20",
+    badge: "bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/15",
   },
   green: {
     bg: "bg-emerald-500/10",
@@ -212,13 +210,9 @@ const langColors: Record<string, string> = {
 };
 
 /* ─── Scroll reveal hook ─── */
-function useScrollReveal() {
-  const initialized = useRef(false);
-
+// Re-scans when `trigger` changes so elements mounted after async loads get observed.
+function useScrollReveal(trigger: unknown) {
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -231,14 +225,17 @@ function useScrollReveal() {
     );
 
     // Small delay to ensure DOM is ready
-    requestAnimationFrame(() => {
+    const raf = requestAnimationFrame(() => {
       document
-        .querySelectorAll(".reveal, .reveal-children")
+        .querySelectorAll(".reveal:not(.visible), .reveal-children:not(.visible)")
         .forEach((el) => observer.observe(el));
     });
 
-    return () => observer.disconnect();
-  }, []);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [trigger]);
 }
 
 /* ─── Section wrapper ─── */
@@ -275,10 +272,10 @@ function SectionHeader({
           {number}.
         </span>
         <h2 className="text-3xl md:text-4xl font-bold text-white">{title}</h2>
-        <div className="flex-1 h-px bg-[#233554] hidden md:block" />
+        <div className="flex-1 h-px bg-[#342c45] hidden md:block" />
       </div>
       {subtitle && (
-        <p className="text-[#8892b0] text-lg ml-0 md:ml-10">{subtitle}</p>
+        <p className="text-[#a59cb8] text-lg ml-0 md:ml-10">{subtitle}</p>
       )}
     </div>
   );
@@ -290,7 +287,7 @@ export default function PortfolioPage() {
   const [config, setConfig] = useState<PortfolioConfig | null>(null);
 
   // Activate scroll-reveal animations
-  useScrollReveal();
+  useScrollReveal(loadingRepos);
 
   useEffect(() => {
     // Fetch portfolio config
@@ -338,28 +335,7 @@ export default function PortfolioPage() {
       localStorage.getItem("portfolio_avatar") ||
       "";
 
-    const rawCv =
-      config?.cv_url ||
-      config?.cv_file ||
-      config?.cv ||
-      config?.resume_url ||
-      config?.resume_file ||
-      config?.resume ||
-      config?.pdf_url ||
-      config?.pdf_file ||
-      config?.pdf ||
-      localStorage.getItem("portfolio_cv_url") ||
-      "";
-
-    const cv_url = rawCv
-      ? rawCv.startsWith("http") ||
-        rawCv.startsWith("data:") ||
-        rawCv.startsWith("blob:")
-        ? rawCv
-        : `${import.meta.env.VITE_API_BASE_URL ? "" : "/"}${rawCv}`
-      : "";
-
-    if (!config) return { ...PROFILE, avatar, cv_url };
+    if (!config) return { ...PROFILE, avatar };
     return {
       name: config.full_name || config.name || PROFILE.name,
       headline: config.headline || PROFILE.headline,
@@ -374,7 +350,6 @@ export default function PortfolioPage() {
         : config.github || PROFILE.github,
       summary: config.about_summary || config.summary || PROFILE.summary,
       avatar,
-      cv_url,
     };
   }, [config]);
 
@@ -450,23 +425,16 @@ export default function PortfolioPage() {
   const filteredRepos = repos;
 
   return (
-    <main className="min-h-screen bg-[#0a192f] text-[#e2e8f0]">
+    <main className="min-h-screen bg-[#15121c] text-[#ece8f4]">
       {/* ═══════════════════════════════════════════════
           HERO — Left-aligned, warm, confident
       ═══════════════════════════════════════════════ */}
       <section className="relative min-h-screen flex items-center overflow-hidden">
         {/* Gradient mesh background */}
-        <div className="absolute inset-0 bg-[#0a192f]" />
+        <div className="absolute inset-0 bg-[#15121c]" />
         <div className="absolute top-0 right-0 w-[700px] h-[700px] bg-amber-500/[0.04] rounded-full blur-[150px]" />
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-500/[0.04] rounded-full blur-[120px]" />
         <div className="absolute top-1/2 left-1/3 w-[400px] h-[400px] bg-violet-500/[0.03] rounded-full blur-[100px]" />
-
-        {/* Floating decorative dots */}
-        <div className="absolute top-[20%] left-[10%] w-1.5 h-1.5 rounded-full bg-amber-400/40 animate-float" />
-        <div className="absolute top-[30%] right-[15%] w-2 h-2 rounded-full bg-teal-400/30 animate-float-slow" />
-        <div className="absolute bottom-[25%] left-[20%] w-1 h-1 rounded-full bg-amber-400/30 animate-float-slower" />
-        <div className="absolute top-[60%] right-[25%] w-1.5 h-1.5 rounded-full bg-violet-400/25 animate-float" />
-        <div className="absolute bottom-[35%] right-[10%] w-1 h-1 rounded-full bg-teal-400/20 animate-float-slow" />
 
         {/* Content */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
@@ -482,41 +450,28 @@ export default function PortfolioPage() {
                 Available for opportunities
               </div>
 
-              <p className="text-[#8892b0] font-mono text-base mb-4">
-                Hi, my name is
-              </p>
-
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-4">
-                <span className="text-white">
-                  {(profile.name || PROFILE.name)
-                    .split(" ")
-                    .slice(0, -1)
-                    .join(" ")}
-                </span>
-                <br />
-                <span className="text-amber-400">
-                  {(profile.name || PROFILE.name).split(" ").slice(-1)[0]}.
-                </span>
+              <h1 className="text-5xl sm:text-7xl lg:text-8xl text-white mb-6">
+                {profile.name || PROFILE.name}
               </h1>
 
-              <p className="text-xl sm:text-2xl text-[#8892b0] font-medium mb-6 max-w-xl">
+              <p className="text-xl sm:text-2xl text-[#a59cb8] font-medium mb-6 max-w-xl">
                 {profile.headline || PROFILE.headline}
               </p>
 
               {/* Contact pills */}
-              <div className="flex flex-wrap items-center gap-2.5 text-sm text-[#8892b0] mb-8">
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#112240] border border-[#233554]">
+              <div className="flex flex-wrap items-center gap-2.5 text-sm text-[#a59cb8] mb-8">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f1a2b] border border-[#342c45]">
                   <MapPin size={14} className="text-amber-400" />
                   {profile.location || PROFILE.location}
                 </span>
                 <a
                   href={`mailto:${profile.email || PROFILE.email}`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#112240] border border-[#233554] hover:border-amber-500/30 hover:text-amber-300 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f1a2b] border border-[#342c45] hover:border-amber-500/30 hover:text-amber-300 transition-colors"
                 >
                   <Mail size={14} className="text-amber-400" />
                   {profile.email || PROFILE.email}
                 </a>
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#112240] border border-[#233554]">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f1a2b] border border-[#342c45]">
                   <Phone size={14} className="text-amber-400" />
                   {profile.phone || PROFILE.phone}
                 </span>
@@ -524,26 +479,6 @@ export default function PortfolioPage() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-3">
-                <a
-                  href={profile.cv_url || "#"}
-                  download={
-                    profile.cv_url && !profile.cv_url.startsWith("http")
-                      ? `${(profile.name || "Mark_Parayno").replace(/\s+/g, "_")}_CV.pdf`
-                      : undefined
-                  }
-                  target={profile.cv_url ? "_blank" : undefined}
-                  rel="noopener noreferrer"
-                  onClick={(e) => {
-                    if (!profile.cv_url) {
-                      e.preventDefault();
-                      toast.error("CV file has not been uploaded yet");
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 px-7 py-3 bg-amber-500 hover:bg-amber-600 text-[#0a192f] font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 active:scale-[0.98]"
-                >
-                  <Download size={18} />
-                  Download CV
-                </a>
                 <a
                   href={profile.linkedin || PROFILE.linkedin}
                   target="_blank"
@@ -557,7 +492,7 @@ export default function PortfolioPage() {
                   href={profile.github || PROFILE.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-7 py-3 border border-[#233554] text-[#e2e8f0] hover:border-amber-500/30 hover:text-amber-400 font-medium rounded-lg transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-7 py-3 border border-[#342c45] text-[#ece8f4] hover:border-amber-500/30 hover:text-amber-400 font-medium rounded-lg transition-all duration-200"
                 >
                   <Github size={18} />
                   GitHub
@@ -569,7 +504,7 @@ export default function PortfolioPage() {
             <div className="hidden lg:flex lg:col-span-2 justify-center">
               <div className="relative">
                 {/* Main avatar box */}
-                <div className="w-72 h-72 rounded-2xl bg-[#112240] border border-[#233554] flex items-center justify-center relative overflow-hidden group shadow-2xl shadow-black/40">
+                <div className="w-72 h-72 rounded-2xl bg-[#1f1a2b] border border-[#342c45] flex items-center justify-center relative overflow-hidden group shadow-2xl shadow-black/40">
                   {profile.avatar ? (
                     <>
                       <img
@@ -606,7 +541,7 @@ export default function PortfolioPage() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-[#8892b0] animate-bounce">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-[#a59cb8] animate-bounce">
           <span className="text-xs font-mono">scroll</span>
           <div className="w-px h-8 bg-gradient-to-b from-amber-400/50 to-transparent" />
         </div>
@@ -623,7 +558,7 @@ export default function PortfolioPage() {
         />
         <div className="max-w-3xl reveal">
           <div className="glass-card p-8 accent-left">
-            <p className="text-lg leading-relaxed text-[#8892b0]">
+            <p className="text-lg leading-relaxed text-[#a59cb8]">
               {profile.summary || PROFILE.summary}
             </p>
           </div>
@@ -633,7 +568,7 @@ export default function PortfolioPage() {
       {/* ═══════════════════════════════════════════════
           SKILLS
       ═══════════════════════════════════════════════ */}
-      <Section id="skills" className="bg-[#112240]/30">
+      <Section id="skills" className="bg-[#1f1a2b]/30">
         <SectionHeader
           number="02"
           title="Technical Skills"
@@ -683,7 +618,7 @@ export default function PortfolioPage() {
         <div className="max-w-4xl">
           <div className="relative">
             {/* Timeline line — amber gradient */}
-            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-500/60 via-amber-500/30 to-[#233554] hidden md:block" />
+            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-500/60 via-amber-500/30 to-[#342c45] hidden md:block" />
 
             <div className="space-y-8 reveal-children">
               {experience.map((job, idx) => (
@@ -694,7 +629,7 @@ export default function PortfolioPage() {
                       className={`w-4 h-4 rounded-full border-4 ${
                         job.current
                           ? "border-amber-500 bg-amber-900/50 shadow-md shadow-amber-500/30"
-                          : "border-[#233554] bg-[#112240]"
+                          : "border-[#342c45] bg-[#1f1a2b]"
                       }`}
                     />
                   </div>
@@ -715,7 +650,7 @@ export default function PortfolioPage() {
                             Current
                           </span>
                         )}
-                        <span className="flex items-center gap-1.5 text-sm text-[#8892b0] bg-[#112240] px-3 py-1 rounded-full border border-[#233554]">
+                        <span className="flex items-center gap-1.5 text-sm text-[#a59cb8] bg-[#1f1a2b] px-3 py-1 rounded-full border border-[#342c45]">
                           <Calendar size={14} />
                           {job.period}
                         </span>
@@ -725,7 +660,7 @@ export default function PortfolioPage() {
                       {job.bullets.map((bullet, i) => (
                         <li
                           key={i}
-                          className="flex items-start gap-2 text-[#8892b0]"
+                          className="flex items-start gap-2 text-[#a59cb8]"
                         >
                           <ChevronRight
                             size={16}
@@ -746,7 +681,7 @@ export default function PortfolioPage() {
       {/* ═══════════════════════════════════════════════
           GITHUB PROJECTS
       ═══════════════════════════════════════════════ */}
-      <Section id="projects" className="bg-[#112240]/30">
+      <Section id="projects" className="bg-[#1f1a2b]/30">
         <SectionHeader
           number="04"
           title="GitHub Projects"
@@ -758,9 +693,9 @@ export default function PortfolioPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="glass-card p-6 animate-pulse">
-                <div className="h-5 bg-[#233554] rounded w-3/4 mb-3" />
-                <div className="h-4 bg-[#233554] rounded w-full mb-2" />
-                <div className="h-4 bg-[#233554] rounded w-2/3" />
+                <div className="h-5 bg-[#342c45] rounded w-3/4 mb-3" />
+                <div className="h-4 bg-[#342c45] rounded w-full mb-2" />
+                <div className="h-4 bg-[#342c45] rounded w-2/3" />
               </div>
             ))}
           </div>
@@ -780,13 +715,13 @@ export default function PortfolioPage() {
                   </h3>
                   <ArrowUpRight
                     size={18}
-                    className="shrink-0 text-[#8892b0] group-hover:text-amber-400 transition-colors"
+                    className="shrink-0 text-[#a59cb8] group-hover:text-amber-400 transition-colors"
                   />
                 </div>
-                <p className="text-sm text-[#8892b0] mb-4 line-clamp-2">
+                <p className="text-sm text-[#a59cb8] mb-4 line-clamp-2">
                   {repo.description || "No description available"}
                 </p>
-                <div className="flex items-center gap-4 text-sm text-[#8892b0]">
+                <div className="flex items-center gap-4 text-sm text-[#a59cb8]">
                   {repo.language && (
                     <span className="flex items-center gap-1.5">
                       <span
@@ -813,8 +748,8 @@ export default function PortfolioPage() {
           </div>
         ) : (
           <div className="text-center py-12 reveal">
-            <Github size={48} className="mx-auto text-[#233554] mb-4" />
-            <p className="text-[#8892b0]">
+            <Github size={48} className="mx-auto text-[#342c45] mb-4" />
+            <p className="text-[#a59cb8]">
               {repos.length === 0
                 ? "Unable to load repositories. Visit GitHub directly."
                 : "No repositories match your search."}
@@ -857,8 +792,8 @@ export default function PortfolioPage() {
                 <p className="text-amber-400 font-medium">
                   {edu.specialization}
                 </p>
-                <p className="text-[#8892b0] mt-1">{edu.school}</p>
-                <span className="inline-flex items-center gap-1.5 mt-2 text-sm text-[#8892b0]">
+                <p className="text-[#a59cb8] mt-1">{edu.school}</p>
+                <span className="inline-flex items-center gap-1.5 mt-2 text-sm text-[#a59cb8]">
                   <Calendar size={14} />
                   {edu.year}
                 </span>

@@ -24,38 +24,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const [loading, setLoading] = useState<boolean>(() => !!localStorage.getItem('token'));
 
+  const setSession = useCallback((jwt: string, userData: User) => {
+    setToken(jwt);
+    setUser(userData);
+    localStorage.setItem('token', jwt);
+    localStorage.setItem('user', JSON.stringify(userData));
+  }, []);
+
+  const clearSession = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }, []);
+
   useEffect(() => {
     const verifySession = async () => {
-      const storedToken = localStorage.getItem('token');
-      if (!storedToken) {
+      if (!localStorage.getItem('token')) {
         setLoading(false);
         return;
       }
 
       try {
-        await client.get('/admin/stats');
+        // Refreshes the cached user (e.g. email_verified) and rejects revoked tokens.
+        const res = await client.get<User>('/auth/me');
+        setUser(res.data);
+        localStorage.setItem('user', JSON.stringify(res.data));
       } catch {
-        // Invalid, expired, or spoofed token
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        clearSession();
       } finally {
         setLoading(false);
       }
     };
 
     verifySession();
-  }, []);
+  }, [clearSession]);
 
   const login = useCallback(async (email: string, password: string): Promise<User> => {
     try {
-      const res = await client.post('/login/', { email, password });
+      const res = await client.post('/auth/login', { email, password });
+      // The token is only ever delivered in this response; never read from anywhere else.
       const { token: jwt, ...userData } = res.data;
-      setToken(jwt);
-      setUser(userData);
-      localStorage.setItem('token', jwt);
-      localStorage.setItem('user', JSON.stringify(userData));
+      setSession(jwt, userData);
       toast.success(`Welcome back, ${userData.first_name}!`);
       return userData;
     } catch (err: unknown) {
@@ -65,22 +75,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.error(msg);
       throw err;
     }
-  }, []);
+  }, [setSession]);
 
-  const logout = useCallback(() => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    toast.success('Logged out successfully');
-  }, []);
+  const logout = useCallback(async () => {
+    try {
+      await client.post('/auth/logout'); // revokes the token server-side
+    } catch {
+      // Already invalid or offline: forgetting it locally is still correct.
+    }
+    clearSession();
+    toast.success('Logged out');
+  }, [clearSession]);
 
   const isAdmin = user?.admin === true;
   const isAuthenticated = !!token;
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, isAdmin, isAuthenticated, login, logout }}
+      value={{ user, token, loading, isAdmin, isAuthenticated, login, logout, setSession, clearSession }}
     >
       {children}
     </AuthContext.Provider>

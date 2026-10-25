@@ -1,16 +1,52 @@
 @import "tailwindcss";
 
+/*
+  "Ube night" palette: ube (Filipino purple yam) as the primary accent, mango as the secondary.
+  The app's components use Tailwind's amber-* and teal-* utilities; remapping those scales here
+  re-skins every page without touching each class.
+*/
+@theme {
+  --font-sans: "Instrument Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+
+  /* amber-* -> ube */
+  --color-amber-50: #f6f2ff;
+  --color-amber-100: #ece4ff;
+  --color-amber-200: #dccdff;
+  --color-amber-300: #c9b2ff;
+  --color-amber-400: #b69cff;
+  --color-amber-500: #a88af7;
+  --color-amber-600: #9474ec;
+  --color-amber-700: #6c4bc0;
+  --color-amber-800: #573d99;
+  --color-amber-900: #46337a;
+  --color-amber-950: #2b1f4d;
+
+  /* teal-* -> mango */
+  --color-teal-50: #fff8eb;
+  --color-teal-100: #ffefcc;
+  --color-teal-200: #ffe09a;
+  --color-teal-300: #ffd27f;
+  --color-teal-400: #ffc86b;
+  --color-teal-500: #f5b04a;
+  --color-teal-600: #dc9330;
+  --color-teal-700: #b77422;
+  --color-teal-800: #8f5a1d;
+  --color-teal-900: #6f461b;
+  --color-teal-950: #3d250b;
+}
+
 @layer base {
   :root {
-    --color-bg: #0a192f;
-    --color-surface: #112240;
-    --color-surface-alt: #1d3461;
-    --color-primary: #f59e0b;
-    --color-primary-dark: #d97706;
-    --color-secondary: #14b8a6;
-    --color-text: #e2e8f0;
-    --color-text-secondary: #8892b0;
-    --color-border: #233554;
+    --color-bg: #15121c;        /* ink */
+    --color-surface: #1f1a2b;   /* plum */
+    --color-surface-alt: #2a2339;
+    --color-primary: #b69cff;   /* ube */
+    --color-primary-dark: #9474ec;
+    --color-secondary: #ffc86b; /* mango */
+    --color-text: #ece8f4;
+    --color-text-secondary: #a59cb8;
+    --color-border: #342c45;    /* seam */
     color-scheme: dark;
   }
 
@@ -20,42 +56,69 @@
   }
 
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #0a192f;
-    color: #e2e8f0;
+    background-color: #15121c;
+    color: #ece8f4;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  h1 {
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 0.95;
   }
 
   ::selection {
-    background: rgba(245, 158, 11, 0.25);
-    color: #fef3c7;
+    background: rgba(182, 156, 255, 0.28);
+    color: #f6f2ff;
+  }
+
+  :focus-visible {
+    outline: 2px solid #ffc86b;
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
   .glass {
-    background: rgba(17, 34, 64, 0.6);
+    background: rgba(31, 26, 43, 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(35, 53, 84, 0.4);
+    border: 1px solid rgba(52, 44, 69, 0.6);
   }
 
   .glass-card {
-    background: rgba(17, 34, 64, 0.6);
+    background: rgba(31, 26, 43, 0.72);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(35, 53, 84, 0.5);
+    border: 1px solid rgba(52, 44, 69, 0.7);
     border-radius: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: border-color 0.2s ease;
   }
 
+  /* Only the border answers the pointer; cards no longer float up on hover. */
   .glass-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(245, 158, 11, 0.2);
-    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5),
-                0 0 0 1px rgba(245, 158, 11, 0.08);
+    border-color: rgba(182, 156, 255, 0.28);
   }
 
   /* Scroll-triggered section reveal */
@@ -91,19 +154,19 @@
   .reveal-children.visible > *:nth-child(6) { transition-delay: 0.3s; }
   .reveal-children.visible > *:nth-child(7) { transition-delay: 0.35s; }
 
-  /* Amber glow effect */
+  /* Ube glow effect (class name kept for existing markup) */
   .glow-amber {
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.15),
-                0 0 60px rgba(245, 158, 11, 0.05);
+    box-shadow: 0 0 20px rgba(182, 156, 255, 0.15),
+                0 0 60px rgba(182, 156, 255, 0.05);
   }
 
-  /* Amber left accent border for cards */
+  /* Left accent border for cards: mango, so it reads apart from ube actions */
   .accent-left {
-    border-left: 3px solid rgba(245, 158, 11, 0.4);
+    border-left: 3px solid rgba(255, 200, 107, 0.45);
   }
 
   .accent-left:hover {
-    border-left-color: rgba(245, 158, 11, 0.8);
+    border-left-color: rgba(255, 200, 107, 0.85);
   }
 }
 
@@ -114,14 +177,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a192f;
+  background: #15121c;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #233554;
+  background: #342c45;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2d4a6f;
+  background: #463a5c;
 }

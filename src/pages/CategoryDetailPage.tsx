@@ -15,15 +15,23 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  Link2,
+  Unlink,
+  AlertTriangle,
+  FolderTree,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import client from "../api/client";
 import {
   getCategory,
   updateCategory,
   createCategoryExpense,
   createCategoryMedication,
+  unlinkCategoryItems,
+  linkCategoryItems,
 } from "../api/categories";
+import { getExpenses, deleteExpense } from "../api/expenses";
+import { getMedications, deleteMedication, takeMedicationDose } from "../api/medications";
+import ImportItemsModal from "../components/categories/ImportItemsModal";
 import type {
   Category,
   Expense,
@@ -31,6 +39,18 @@ import type {
   CategoryExpenseCreatePayload,
   CategoryMedicationCreatePayload,
 } from "../types";
+
+interface UnlinkTarget {
+  type: "expense" | "medication";
+  id: number;
+  title: string;
+}
+
+interface DeleteTarget {
+  type: "expense" | "medication";
+  id: number;
+  title: string;
+}
 
 export default function CategoryDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,9 +67,25 @@ export default function CategoryDetailPage() {
   const [isSavingTitle, setIsSavingTitle] = useState(false);
 
   // Modals
+  const [showImportModal, setShowImportModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [showAddMedModal, setShowAddMedModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Unlink Modal State
+  const [unlinkTarget, setUnlinkTarget] = useState<UnlinkTarget | null>(null);
+  const [isUnlinking, setIsUnlinking] = useState(false);
+
+  // Delete Modal State
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Quick Link Dropdown State
+  const [uncategorizedExpenses, setUncategorizedExpenses] = useState<Expense[]>([]);
+  const [uncategorizedMeds, setUncategorizedMeds] = useState<Medication[]>([]);
+  const [selectedQuickExpenseId, setSelectedQuickExpenseId] = useState<string>("");
+  const [selectedQuickMedId, setSelectedQuickMedId] = useState<string>("");
+  const [isQuickLinking, setIsQuickLinking] = useState(false);
 
   // Expandable expense accordion states
   const [expandedExpenses, setExpandedExpenses] = useState<Record<number, boolean>>({});
@@ -69,20 +105,37 @@ export default function CategoryDetailPage() {
     doses_taken: "0",
   });
 
-  const refreshCategory = useCallback(async (isSilent = false) => {
-    if (!categoryId || isNaN(categoryId)) return;
-    if (!isSilent) setLoading(true);
-
+  const fetchUncategorized = useCallback(async () => {
     try {
-      const data = await getCategory(categoryId);
-      setCategory(data);
-      setEditTitleValue(data.title);
+      const [exp, med] = await Promise.all([
+        getExpenses(true).catch(() => [] as Expense[]),
+        getMedications(true).catch(() => [] as Medication[]),
+      ]);
+      setUncategorizedExpenses(exp.filter((e) => e.category_id === null || e.category_id === undefined));
+      setUncategorizedMeds(med.filter((m) => m.category_id === null || m.category_id === undefined));
     } catch {
-      toast.error("Failed to load category details");
-    } finally {
-      setLoading(false);
+      // silent
     }
-  }, [categoryId]);
+  }, []);
+
+  const refreshCategory = useCallback(
+    async (isSilent = false) => {
+      if (!categoryId || isNaN(categoryId)) return;
+      if (!isSilent) setLoading(true);
+
+      try {
+        const data = await getCategory(categoryId);
+        setCategory(data);
+        setEditTitleValue(data.title);
+        fetchUncategorized();
+      } catch {
+        toast.error("Failed to load category details");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [categoryId, fetchUncategorized]
+  );
 
   useEffect(() => {
     if (!categoryId || isNaN(categoryId)) {
@@ -96,6 +149,7 @@ export default function CategoryDetailPage() {
           setCategory(data);
           setEditTitleValue(data.title);
           setLoading(false);
+          fetchUncategorized();
         }
       })
       .catch(() => {
@@ -108,7 +162,7 @@ export default function CategoryDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [categoryId]);
+  }, [categoryId, fetchUncategorized]);
 
   const handleSaveTitle = async () => {
     if (!category || !categoryId) return;
@@ -219,37 +273,111 @@ export default function CategoryDetailPage() {
     }
   };
 
+  // ─── QUICK LINK DROPDOWN ACTION ───
+  const handleQuickLinkExpense = async () => {
+    if (!categoryId || !selectedQuickExpenseId) return;
+    const expId = parseInt(selectedQuickExpenseId, 10);
+    if (isNaN(expId)) return;
+
+    setIsQuickLinking(true);
+    const toastId = toast.loading("Linking expense...");
+    try {
+      await linkCategoryItems(categoryId, { expense_ids: [expId] });
+      toast.success("Expense linked to category!", { id: toastId });
+      setSelectedQuickExpenseId("");
+      refreshCategory(true);
+    } catch {
+      toast.error("Failed to link expense", { id: toastId });
+    } finally {
+      setIsQuickLinking(false);
+    }
+  };
+
+  const handleQuickLinkMed = async () => {
+    if (!categoryId || !selectedQuickMedId) return;
+    const medId = parseInt(selectedQuickMedId, 10);
+    if (isNaN(medId)) return;
+
+    setIsQuickLinking(true);
+    const toastId = toast.loading("Linking medication...");
+    try {
+      await linkCategoryItems(categoryId, { medication_ids: [medId] });
+      toast.success("Medication linked to category!", { id: toastId });
+      setSelectedQuickMedId("");
+      refreshCategory(true);
+    } catch {
+      toast.error("Failed to link medication", { id: toastId });
+    } finally {
+      setIsQuickLinking(false);
+    }
+  };
+
+  // ─── UNLINK ITEM ACTION ───
+  const handleOpenUnlink = (type: "expense" | "medication", id: number, title: string) => {
+    setUnlinkTarget({ type, id, title });
+  };
+
+  const handleConfirmUnlink = async () => {
+    if (!categoryId || !unlinkTarget) return;
+
+    setIsUnlinking(true);
+    const toastId = toast.loading(`Detaching "${unlinkTarget.title}"...`);
+
+    try {
+      const payload =
+        unlinkTarget.type === "expense"
+          ? { expense_ids: [unlinkTarget.id] }
+          : { medication_ids: [unlinkTarget.id] };
+
+      await unlinkCategoryItems(categoryId, payload);
+      toast.success(
+        `"${unlinkTarget.title}" detached and moved to uncategorized!`,
+        { id: toastId }
+      );
+      setUnlinkTarget(null);
+      refreshCategory(true);
+    } catch {
+      toast.error("Failed to unlink item from category", { id: toastId });
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
+
+  // ─── DELETE ITEM ACTION ───
+  const handleOpenDelete = (type: "expense" | "medication", id: number, title: string) => {
+    setDeleteTarget({ type, id, title });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    const toastId = toast.loading(`Deleting "${deleteTarget.title}" permanently...`);
+
+    try {
+      if (deleteTarget.type === "expense") {
+        await deleteExpense(deleteTarget.id);
+      } else {
+        await deleteMedication(deleteTarget.id);
+      }
+      toast.success(`"${deleteTarget.title}" deleted permanently!`, { id: toastId });
+      setDeleteTarget(null);
+      refreshCategory(true);
+    } catch {
+      toast.error("Failed to delete item", { id: toastId });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // ─── TAKE DOSE ───
   const handleTakeDose = async (medId: number) => {
     try {
-      await client.post(`/medications/${medId}/take`, { doses: 1 });
+      await takeMedicationDose(medId, 1);
       toast.success("+1 dose logged!");
       refreshCategory(true);
     } catch {
       toast.error("Failed to log dose");
-    }
-  };
-
-  // ─── DELETE ITEMS ───
-  const handleDeleteExpense = async (expenseId: number) => {
-    if (!confirm("Are you sure you want to delete this expense sheet?")) return;
-    try {
-      await client.delete(`/expenses/${expenseId}`);
-      toast.success("Expense sheet deleted");
-      refreshCategory(true);
-    } catch {
-      toast.error("Failed to delete expense sheet");
-    }
-  };
-
-  const handleDeleteMedication = async (medId: number) => {
-    if (!confirm("Are you sure you want to delete this medication?")) return;
-    try {
-      await client.delete(`/medications/${medId}`);
-      toast.success("Medication deleted");
-      refreshCategory(true);
-    } catch {
-      toast.error("Failed to delete medication");
     }
   };
 
@@ -265,10 +393,7 @@ export default function CategoryDetailPage() {
     }));
   };
 
-  const removeExpenseRow = (
-    type: "items" | "tax_deductions",
-    index: number
-  ) => {
+  const removeExpenseRow = (type: "items" | "tax_deductions", index: number) => {
     setExpenseForm((prev) => ({
       ...prev,
       [type]: prev[type].filter((_, i) => i !== index),
@@ -291,15 +416,15 @@ export default function CategoryDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 pt-24 pb-16 flex items-center justify-center">
-        <Loader2 size={40} className="animate-spin text-blue-500" />
+      <div className="min-h-screen bg-[#15121c] pt-24 pb-16 flex items-center justify-center">
+        <Loader2 size={40} className="animate-spin text-amber-500" />
       </div>
     );
   }
 
   if (!category) {
     return (
-      <div className="min-h-screen bg-slate-950 pt-24 pb-16">
+      <div className="min-h-screen bg-[#15121c] pt-24 pb-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <div className="glass-card p-12">
             <h2 className="text-2xl font-bold text-white mb-2">Category Not Found</h2>
@@ -324,10 +449,13 @@ export default function CategoryDetailPage() {
       })
     : "";
 
+  const totalExpensesCount = category.expenses?.length || 0;
+  const totalMedsCount = category.medications?.length || 0;
+
   return (
-    <div className="min-h-screen bg-slate-950 pt-20 pb-16">
+    <div className="min-h-screen bg-[#15121c] text-[#ece8f4] pt-20 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Navigation & Title Header */}
+        {/* Navigation & Header */}
         <div>
           <div className="flex items-center gap-3 mb-4">
             <button
@@ -354,13 +482,13 @@ export default function CategoryDetailPage() {
                     type="text"
                     value={editTitleValue}
                     onChange={(e) => setEditTitleValue(e.target.value)}
-                    className="flex-1 px-4 py-2 bg-slate-900 border border-blue-500 rounded-xl text-xl sm:text-2xl font-bold text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="flex-1 px-4 py-2 bg-slate-900 border border-amber-500 rounded-xl text-xl sm:text-2xl font-bold text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
                     autoFocus
                   />
                   <button
                     onClick={handleSaveTitle}
                     disabled={isSavingTitle}
-                    className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-colors"
+                    className="p-2.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-bold rounded-xl shadow-md transition-colors"
                   >
                     {isSavingTitle ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
                   </button>
@@ -376,12 +504,13 @@ export default function CategoryDetailPage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-3 group">
-                  <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+                  <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                    <FolderTree className="text-amber-400" size={32} />
                     {category.title}
                   </h1>
                   <button
                     onClick={() => setIsEditingTitle(true)}
-                    className="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-900 transition-colors opacity-80 group-hover:opacity-100"
+                    className="p-2 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-900 transition-colors opacity-80 group-hover:opacity-100"
                     title="Edit title"
                   >
                     <Edit3 size={18} />
@@ -398,16 +527,26 @@ export default function CategoryDetailPage() {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-3 flex-wrap">
+              {/* Import / Link Uncategorized Items Button */}
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-95 text-sm"
+              >
+                <Link2 size={17} />
+                Import / Link Items
+              </button>
+
               <button
                 onClick={handleOpenAddExpense}
-                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 text-sm"
               >
                 <Receipt size={17} />
                 + Add Expense
               </button>
+
               <button
                 onClick={handleOpenAddMed}
-                className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-purple-500/20 active:scale-95"
+                className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-purple-500/20 active:scale-95 text-sm"
               >
                 <Pill size={17} />
                 + Add Medication
@@ -416,7 +555,7 @@ export default function CategoryDetailPage() {
           </div>
         </div>
 
-        {/* Total Spending Breakdown Widget */}
+        {/* Total Spending Breakdown Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           {/* Expenses Total */}
           <div className="glass-card p-6 bg-gradient-to-br from-slate-900/90 to-emerald-950/20 border-emerald-900/30">
@@ -425,7 +564,7 @@ export default function CategoryDetailPage() {
                 <Receipt size={16} /> Total Expenses
               </span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-300 border border-emerald-800/40">
-                {category.expenses?.length || 0} sheets
+                {totalExpensesCount} sheets
               </span>
             </div>
             <p className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
@@ -443,7 +582,7 @@ export default function CategoryDetailPage() {
                 <Pill size={16} /> Total Medications
               </span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-purple-900/40 text-purple-300 border border-purple-800/40">
-                {category.medications?.length || 0} meds
+                {totalMedsCount} meds
               </span>
             </div>
             <p className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
@@ -455,16 +594,16 @@ export default function CategoryDetailPage() {
           </div>
 
           {/* Combined Total */}
-          <div className="glass-card p-6 bg-gradient-to-br from-slate-900/90 to-blue-950/30 border-blue-800/40 shadow-lg shadow-blue-500/5">
+          <div className="glass-card p-6 bg-gradient-to-br from-slate-900/90 to-amber-950/20 border-amber-900/30 shadow-lg shadow-amber-500/5">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-blue-400 flex items-center gap-1.5">
-                <DollarSign size={16} /> Combined Spend
+              <span className="text-sm font-medium text-amber-400 flex items-center gap-1.5">
+                <DollarSign size={16} /> Combined Total
               </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-300 border border-blue-700/40">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-300 border border-amber-700/40">
                 Grand Total
               </span>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-blue-200 mt-1">
+            <p className="text-2xl sm:text-3xl font-extrabold text-amber-200 mt-1">
               ₱{(category.total_amount || 0).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -473,30 +612,89 @@ export default function CategoryDetailPage() {
           </div>
         </div>
 
-        {/* Section Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-          <button
-            onClick={() => setActiveTab("expenses")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === "expenses"
-                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-900"
-            }`}
-          >
-            <Receipt size={17} />
-            Expenses ({category.expenses?.length || 0})
-          </button>
-          <button
-            onClick={() => setActiveTab("medications")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === "medications"
-                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-900"
-            }`}
-          >
-            <Pill size={17} />
-            Medications ({category.medications?.length || 0})
-          </button>
+        {/* Section Tabs & Quick Link Dropdowns */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab("expenses")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                activeTab === "expenses"
+                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                  : "text-slate-400 hover:text-white hover:bg-slate-900"
+              }`}
+            >
+              <Receipt size={17} />
+              Expenses ({totalExpensesCount})
+            </button>
+            <button
+              onClick={() => setActiveTab("medications")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                activeTab === "medications"
+                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
+                  : "text-slate-400 hover:text-white hover:bg-slate-900"
+              }`}
+            >
+              <Pill size={17} />
+              Medications ({totalMedsCount})
+            </button>
+          </div>
+
+          {/* Quick Import Dropdown for Active Tab */}
+          <div className="flex items-center gap-2">
+            {activeTab === "expenses" ? (
+              uncategorizedExpenses.length > 0 && (
+                <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
+                  <select
+                    value={selectedQuickExpenseId}
+                    onChange={(e) => setSelectedQuickExpenseId(e.target.value)}
+                    className="bg-transparent text-xs text-slate-300 focus:outline-none px-2 py-1 max-w-[200px] truncate"
+                  >
+                    <option value="" className="bg-slate-900 text-slate-400">
+                      Link uncategorized expense...
+                    </option>
+                    {uncategorizedExpenses.map((e) => (
+                      <option key={e.id} value={e.id} className="bg-slate-900 text-white">
+                        {e.title} (₱{(e.total_expenses ?? e.total_amount ?? 0).toLocaleString()})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleQuickLinkExpense}
+                    disabled={!selectedQuickExpenseId || isQuickLinking}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    Link
+                  </button>
+                </div>
+              )
+            ) : (
+              uncategorizedMeds.length > 0 && (
+                <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
+                  <select
+                    value={selectedQuickMedId}
+                    onChange={(e) => setSelectedQuickMedId(e.target.value)}
+                    className="bg-transparent text-xs text-slate-300 focus:outline-none px-2 py-1 max-w-[200px] truncate"
+                  >
+                    <option value="" className="bg-slate-900 text-slate-400">
+                      Link uncategorized med...
+                    </option>
+                    {uncategorizedMeds.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-slate-900 text-white">
+                        {m.name} (₱{(m.cost || 0).toLocaleString()}/dose)
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleQuickLinkMed}
+                    disabled={!selectedQuickMedId || isQuickLinking}
+                    className="px-3 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    Link
+                  </button>
+                </div>
+              )
+            )}
+          </div>
         </div>
 
         {/* ═════════════════════════════════════════════════════
@@ -508,13 +706,23 @@ export default function CategoryDetailPage() {
               <div className="glass-card p-12 text-center border-dashed border-slate-800">
                 <Receipt size={36} className="mx-auto text-slate-600 mb-3" />
                 <h4 className="text-lg font-bold text-white mb-1">No expenses in this category</h4>
-                <p className="text-sm text-slate-400 mb-5">Add expense sheets to track income, items, and tax deductions.</p>
-                <button
-                  onClick={handleOpenAddExpense}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-all"
-                >
-                  <Plus size={16} /> Add First Expense
-                </button>
+                <p className="text-sm text-slate-400 mb-5">
+                  Link existing uncategorized expense sheets or create a brand new one.
+                </p>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <button
+                    onClick={() => setShowImportModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] text-sm font-semibold rounded-xl transition-all shadow-md shadow-amber-500/20"
+                  >
+                    <Link2 size={16} /> Import Uncategorized
+                  </button>
+                  <button
+                    onClick={handleOpenAddExpense}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-all"
+                  >
+                    <Plus size={16} /> Add First Expense
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -531,7 +739,12 @@ export default function CategoryDetailPage() {
                       {/* Expense Card Header */}
                       <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex-1">
-                          <h4 className="text-lg font-bold text-white mb-1">{expense.title}</h4>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-lg font-bold text-white">{expense.title}</h4>
+                            <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
+                              Linked
+                            </span>
+                          </div>
                           <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
                             <span>
                               Gross:{" "}
@@ -556,6 +769,7 @@ export default function CategoryDetailPage() {
                           </div>
                         </div>
 
+                        {/* Action Buttons: Breakdown, Unlink, Delete */}
                         <div className="flex items-center gap-2 self-end sm:self-center">
                           <button
                             onClick={() => toggleExpenseExpand(expense.id)}
@@ -564,10 +778,22 @@ export default function CategoryDetailPage() {
                             <span>{itemCount + taxCount} Breakdown</span>
                             {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
+
+                          {/* Unlink button */}
                           <button
-                            onClick={() => handleDeleteExpense(expense.id)}
+                            onClick={() => handleOpenUnlink("expense", expense.id, expense.title)}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-medium text-amber-300 hover:bg-amber-500/20 transition-colors"
+                            title="Unlink from category (move to uncategorized)"
+                          >
+                            <Unlink size={13} />
+                            <span>Unlink</span>
+                          </button>
+
+                          {/* Permanent delete button */}
+                          <button
+                            onClick={() => handleOpenDelete("expense", expense.id, expense.title)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
-                            title="Delete expense sheet"
+                            title="Permanently delete expense sheet"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -647,18 +873,31 @@ export default function CategoryDetailPage() {
               <div className="glass-card p-12 text-center border-dashed border-slate-800">
                 <Pill size={36} className="mx-auto text-slate-600 mb-3" />
                 <h4 className="text-lg font-bold text-white mb-1">No medications in this category</h4>
-                <p className="text-sm text-slate-400 mb-5">Add medications to track dosages, costs per unit, and total spending.</p>
-                <button
-                  onClick={handleOpenAddMed}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl transition-all"
-                >
-                  <Plus size={16} /> Add First Medication
-                </button>
+                <p className="text-sm text-slate-400 mb-5">
+                  Import existing uncategorized medications or track a new one.
+                </p>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <button
+                    onClick={() => setShowImportModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] text-sm font-semibold rounded-xl transition-all shadow-md shadow-amber-500/20"
+                  >
+                    <Link2 size={16} /> Import Uncategorized
+                  </button>
+                  <button
+                    onClick={handleOpenAddMed}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl transition-all"
+                  >
+                    <Plus size={16} /> Add First Medication
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.medications.map((med: Medication) => {
-                  const spent = med.total_spent !== undefined ? med.total_spent : (med.cost || 0) * (med.doses_taken || 0);
+                  const spent =
+                    med.total_spent !== undefined
+                      ? med.total_spent
+                      : (med.cost || 0) * (med.doses_taken || 0);
 
                   return (
                     <div
@@ -670,13 +909,24 @@ export default function CategoryDetailPage() {
                           <div className="w-10 h-10 rounded-xl bg-purple-900/30 text-purple-400 border border-purple-800/40 flex items-center justify-center shrink-0">
                             <Pill size={20} />
                           </div>
-                          <button
-                            onClick={() => handleDeleteMedication(med.id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
-                            title="Delete medication"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            {/* Unlink button */}
+                            <button
+                              onClick={() => handleOpenUnlink("medication", med.id, med.name)}
+                              className="p-1.5 rounded-lg text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                              title="Unlink medication (move to uncategorized)"
+                            >
+                              <Unlink size={16} />
+                            </button>
+                            {/* Permanent delete button */}
+                            <button
+                              onClick={() => handleOpenDelete("medication", med.id, med.name)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+                              title="Permanently delete medication"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
 
                         <h4 className="text-lg font-bold text-white mb-2">{med.name}</h4>
@@ -710,6 +960,117 @@ export default function CategoryDetailPage() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ═════════════════════════════════════════════════════
+            IMPORT / LINK ITEMS MODAL
+            ═════════════════════════════════════════════════════ */}
+        {categoryId && (
+          <ImportItemsModal
+            isOpen={showImportModal}
+            onClose={() => setShowImportModal(false)}
+            categoryId={categoryId}
+            categoryTitle={category.title}
+            onSuccess={() => {
+              refreshCategory(true);
+            }}
+          />
+        )}
+
+        {/* ═════════════════════════════════════════════════════
+            UNLINK CONFIRMATION MODAL
+            ═════════════════════════════════════════════════════ */}
+        {unlinkTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <div className="glass-card p-6 max-w-md w-full border-amber-500/40 bg-slate-900/95 shadow-2xl animate-[scaleIn_0.2s_ease-out]">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                  <Unlink size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Unlink Item</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Move "{unlinkTarget.title}" to Uncategorized
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 leading-relaxed mb-6 space-y-1">
+                <p>
+                  This action will detach <strong className="text-white">"{unlinkTarget.title}"</strong> from category{" "}
+                  <strong className="text-amber-300">"{category.title}"</strong>.
+                </p>
+                <p className="text-slate-400 pt-1">
+                  💡 <em>The item and its financial records will NOT be deleted.</em> It will remain accessible under Uncategorized items.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setUnlinkTarget(null)}
+                  disabled={isUnlinking}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmUnlink}
+                  disabled={isUnlinking}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-[#15121c] shadow-lg shadow-amber-500/20 transition-all"
+                >
+                  {isUnlinking ? <Loader2 size={16} className="animate-spin" /> : <Unlink size={16} />}
+                  Detach & Unlink
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═════════════════════════════════════════════════════
+            PERMANENT DELETE CONFIRMATION MODAL
+            ═════════════════════════════════════════════════════ */}
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <div className="glass-card p-6 max-w-md w-full border-red-500/40 bg-slate-900/95 shadow-2xl animate-[scaleIn_0.2s_ease-out]">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 shrink-0">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Permanently Delete Item</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Delete "{deleteTarget.title}"
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-red-950/30 border border-red-900/40 text-xs text-red-200 leading-relaxed mb-6">
+                Are you sure you want to permanently delete <strong className="text-white">"{deleteTarget.title}"</strong>? This will permanently remove it and all of its associated records from the database.
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/25 transition-all"
+                >
+                  {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                  Delete Permanently
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

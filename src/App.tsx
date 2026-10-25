@@ -9,12 +9,15 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import CategoriesPage from './pages/CategoriesPage';
 import CategoryDetailPage from './pages/CategoryDetailPage';
+import SavingsPage from './pages/SavingsPage';
+import AccountPage from './pages/AccountPage';
+import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from './pages/AuthFlows';
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-[#0a192f] text-[#e2e8f0] selection:bg-amber-500/25 selection:text-amber-100">
+        <div className="min-h-screen bg-[#15121c] text-[#ece8f4] selection:bg-amber-500/25 selection:text-amber-100">
           <Navbar />
 
           <Routes>
@@ -32,12 +35,37 @@ export default function App() {
             {/* Admin Login */}
             <Route path="/admin/login" element={<AdminLogin />} />
 
+            {/* Email links (FRONTEND_URL/verify-email, /reset-password) and password recovery */}
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+            {/* Account settings: any signed-in user */}
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute>
+                  <AccountPage />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Protected Admin Dashboard */}
             <Route
               path="/admin"
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Protected Savings Overview & Management */}
+            <Route
+              path="/savings"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <SavingsPage />
                 </ProtectedRoute>
               }
             />
@@ -71,12 +99,12 @@ export default function App() {
                 borderRadius: '12px',
                 padding: '12px 16px',
                 fontSize: '14px',
-                background: '#112240',
-                color: '#e2e8f0',
-                border: '1px solid #233554',
+                background: '#1f1a2b',
+                color: '#ece8f4',
+                border: '1px solid #342c45',
               },
               success: {
-                iconTheme: { primary: '#14b8a6', secondary: '#fff' },
+                iconTheme: { primary: '#ffc86b', secondary: '#fff' },
               },
               error: {
                 iconTheme: { primary: '#ef4444', secondary: '#fff' },

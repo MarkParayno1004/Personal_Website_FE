@@ -6,6 +6,9 @@ export interface User {
   first_name: string;
   last_name?: string;
   admin?: boolean;
+  email_verified?: boolean;
+  has_cv?: boolean;
+  profile_picture?: string | null;
 }
 
 export interface AuthContextType {
@@ -15,7 +18,11 @@ export interface AuthContextType {
   isAdmin: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  /** Store a token + user returned by the API (login, password change). */
+  setSession: (token: string, user: User) => void;
+  /** Forget the session locally without calling the API (e.g. after account deletion). */
+  clearSession: () => void;
 }
 
 export interface SkillCategory {
@@ -63,7 +70,6 @@ export interface PortfolioProfile {
   github: string;
   summary: string;
   avatar?: string;
-  cv_url?: string;
 }
 
 export interface PortfolioConfig {
@@ -146,6 +152,7 @@ export interface Expense {
   category_id?: number | null;
   items?: ExpenseItem[];
   tax_deductions?: TaxDeduction[];
+  savings?: import('./saving').Saving[];
   created_at?: string;
 }
 
@@ -164,17 +171,19 @@ export interface Medication {
 export interface Category {
   id: number;
   title: string;
-  user_id: number;
+  user_id?: number;
   expenses: Expense[];
   medications: Medication[];
   total_expenses_amount: number;
   total_medications_amount: number;
   total_amount: number;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface CreateCategoryPayload {
   title: string;
+  expense_ids?: number[];
+  medication_ids?: number[];
   expenses?: Array<{
     title: string;
     gross_income?: number;
@@ -189,8 +198,20 @@ export interface CreateCategoryPayload {
   }>;
 }
 
+export interface LinkItemsPayload {
+  expense_ids?: number[];
+  medication_ids?: number[];
+}
+
+export interface UnlinkItemsPayload {
+  expense_ids?: number[];
+  medication_ids?: number[];
+}
+
 export interface UpdateCategoryPayload {
   title?: string;
+  expense_ids?: number[];
+  medication_ids?: number[];
 }
 
 export interface CategoryExpenseCreatePayload {
@@ -213,4 +234,8 @@ export interface AdminUser {
   last_name: string;
   admin: boolean;
 }
+
+export * from './saving';
+
+
 

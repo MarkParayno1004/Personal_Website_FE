@@ -29,7 +29,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a192f] px-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#15121c] px-4 relative overflow-hidden">
       {/* Ambient background glow */}
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-amber-500/[0.04] rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-teal-500/[0.04] rounded-full blur-[140px] pointer-events-none" />
@@ -40,14 +40,14 @@ export default function AdminLogin() {
       <div className="absolute top-[60%] left-[10%] w-1 h-1 rounded-full bg-amber-400/20 animate-float-slower" />
 
       <div className="relative w-full max-w-md z-10">
-        <div className="glass-card p-8 sm:p-10 border border-[#233554] shadow-2xl shadow-black/50 accent-left">
+        <div className="glass-card p-8 sm:p-10 border border-[#342c45] shadow-2xl shadow-black/50 accent-left">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#112240] border border-amber-500/30 flex items-center justify-center shadow-lg shadow-amber-500/10 relative">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#1f1a2b] border border-amber-500/30 flex items-center justify-center shadow-lg shadow-amber-500/10 relative">
               <Shield size={28} className="text-amber-400" />
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight">Admin Portal</h1>
-            <p className="text-[#8892b0] mt-1 text-sm">
+            <p className="text-[#a59cb8] mt-1 text-sm">
               Sign in to manage your portfolio & content
             </p>
           </div>
@@ -55,13 +55,13 @@ export default function AdminLogin() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-[#e2e8f0] mb-1.5">
+              <label className="block text-sm font-medium text-[#ece8f4] mb-1.5">
                 Email Address
               </label>
               <div className="relative">
                 <Mail
                   size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892b0]"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a59cb8]"
                 />
                 <input
                   type="email"
@@ -69,19 +69,24 @@ export default function AdminLogin() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@example.com"
                   required
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#0a192f] border border-[#233554] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500 text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#15121c] border border-[#342c45] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500 text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#e2e8f0] mb-1.5">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-[#ece8f4]">
+                  Password
+                </label>
+                <Link to="/forgot-password" className="text-xs text-[#a59cb8] hover:text-amber-400 transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock
                   size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892b0]"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a59cb8]"
                 />
                 <input
                   type={showPassword ? "text" : "password"}
@@ -89,12 +94,12 @@ export default function AdminLogin() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-10 pr-12 py-2.5 bg-[#0a192f] border border-[#233554] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500 text-sm"
+                  className="w-full pl-10 pr-12 py-2.5 bg-[#15121c] border border-[#342c45] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8892b0] hover:text-amber-400 transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#a59cb8] hover:text-amber-400 transition-colors"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -104,11 +109,11 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-amber-500 hover:bg-amber-600 text-[#0a192f] font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed text-sm"
             >
               {loading ? (
                 <>
-                  <Loader2 size={18} className="animate-spin text-[#0a192f]" />
+                  <Loader2 size={18} className="animate-spin text-[#15121c]" />
                   Signing in...
                 </>
               ) : (
@@ -118,10 +123,10 @@ export default function AdminLogin() {
           </form>
 
           {/* Back link */}
-          <div className="text-center mt-6 pt-5 border-t border-[#233554]/60">
+          <div className="text-center mt-6 pt-5 border-t border-[#342c45]/60">
             <Link
               to="/"
-              className="inline-flex items-center gap-1.5 text-xs text-[#8892b0] hover:text-amber-400 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-[#a59cb8] hover:text-amber-400 transition-colors"
             >
               <ArrowLeft size={14} />
               <span>Back to Portfolio</span>

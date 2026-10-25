@@ -3,17 +3,22 @@ import {
   useEffect,
   useCallback,
   useRef,
+  useMemo,
   type ComponentType,
 } from "react";
-import client from "../api/client";
+import client, { getAllPages, getPage } from "../api/client";
 import { getCategories } from "../api/categories";
+import { updateExpense } from "../api/expenses";
+import { updateMedication } from "../api/medications";
 import CategoriesOverview from "../components/categories/CategoriesOverview";
+import SavingsView from "../components/savings/SavingsView";
 import toast from "react-hot-toast";
 import {
   LayoutDashboard,
   Palette,
   FolderTree,
   Receipt,
+  PiggyBank,
   Pill,
   Users,
   DollarSign,
@@ -32,8 +37,9 @@ import {
   Sparkles,
   Camera,
   FileText,
-  ExternalLink,
   FileCheck,
+  Search,
+  Tag,
 } from "lucide-react";
 import type {
   DashboardStats,
@@ -55,6 +61,7 @@ const TABS: TabItem[] = [
   { id: "portfolio", label: "Portfolio Config", icon: Palette },
   { id: "categories", label: "Categories", icon: FolderTree },
   { id: "expenses", label: "Expenses", icon: Receipt },
+  { id: "savings", label: "Savings", icon: PiggyBank },
   { id: "medications", label: "Medications", icon: Pill },
   { id: "users", label: "Users", icon: Users },
 ];
@@ -118,9 +125,9 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="glass-card p-6 animate-pulse">
-              <div className="h-10 w-10 bg-[#233554] rounded-xl mb-3" />
-              <div className="h-4 bg-[#233554] rounded w-20 mb-2" />
-              <div className="h-6 bg-[#233554] rounded w-16" />
+              <div className="h-10 w-10 bg-[#342c45] rounded-xl mb-3" />
+              <div className="h-4 bg-[#342c45] rounded w-20 mb-2" />
+              <div className="h-6 bg-[#342c45] rounded w-16" />
             </div>
           ))}
         </div>
@@ -135,7 +142,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
                 >
                   <Icon size={24} />
                 </div>
-                <p className="text-sm text-[#8892b0]">{card.label}</p>
+                <p className="text-sm text-[#a59cb8]">{card.label}</p>
                 <p className="text-2xl font-bold text-white mt-1">
                   {card.value}
                 </p>
@@ -186,10 +193,10 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
                 <h4 className="font-semibold text-white group-hover:text-amber-400 transition-colors">
                   {action.label}
                 </h4>
-                <p className="text-sm text-[#8892b0] mt-1">{action.desc}</p>
+                <p className="text-sm text-[#a59cb8] mt-1">{action.desc}</p>
                 <ArrowRight
                   size={16}
-                  className="mt-3 text-[#8892b0] group-hover:text-amber-400 group-hover:translate-x-1 transition-all"
+                  className="mt-3 text-[#a59cb8] group-hover:text-amber-400 group-hover:translate-x-1 transition-all"
                 />
               </button>
             );
@@ -222,8 +229,6 @@ interface PortfolioConfigForm {
   github_username: string;
   summary: string;
   avatar_url: string;
-  cv_url: string;
-  cv_name: string;
 }
 
 function compressImage(
@@ -296,6 +301,9 @@ function PortfolioConfigTab() {
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
+  // The CV is private on the backend: we only know whether one exists.
+  const [hasCv, setHasCv] = useState(false);
+  const [cvBusy, setCvBusy] = useState(false);
   const [form, setForm] = useState<PortfolioConfigForm>({
     full_name: DEFAULT_PROFILE.full_name,
     headline: DEFAULT_PROFILE.headline,
@@ -306,8 +314,6 @@ function PortfolioConfigTab() {
     github_username: DEFAULT_PROFILE.github_username,
     summary: DEFAULT_PROFILE.summary,
     avatar_url: "",
-    cv_url: "",
-    cv_name: "",
   });
 
   const fetchConfig = useCallback(() => {
@@ -331,24 +337,7 @@ function PortfolioConfigTab() {
           localStorage.getItem("portfolio_avatar") ||
           "";
 
-        const cv =
-          raw.cv_url ||
-          raw.cv_file ||
-          raw.cv ||
-          raw.resume_url ||
-          raw.resume_file ||
-          raw.resume ||
-          raw.pdf_url ||
-          raw.pdf_file ||
-          raw.pdf ||
-          localStorage.getItem("portfolio_cv_url") ||
-          "";
-
-        const cvName =
-          raw.cv_name ||
-          raw.cv_filename ||
-          localStorage.getItem("portfolio_cv_name") ||
-          (cv ? "Curriculum_Vitae.pdf" : "");
+        setHasCv(Boolean(raw.has_cv));
 
         setForm({
           full_name: raw.full_name || raw.name || DEFAULT_PROFILE.full_name,
@@ -364,8 +353,6 @@ function PortfolioConfigTab() {
             DEFAULT_PROFILE.github_username,
           summary: bioSummary || DEFAULT_PROFILE.summary,
           avatar_url: avatar,
-          cv_url: cv,
-          cv_name: cvName,
         });
       })
       .catch(() => {
@@ -375,8 +362,6 @@ function PortfolioConfigTab() {
         setForm((prev) => ({
           ...prev,
           avatar_url: localStorage.getItem("portfolio_avatar") || "",
-          cv_url: localStorage.getItem("portfolio_cv_url") || "",
-          cv_name: localStorage.getItem("portfolio_cv_name") || "",
         }));
       })
       .finally(() => setLoading(false));
@@ -425,57 +410,68 @@ function PortfolioConfigTab() {
     toast.success("Image removed. Switched to initials avatar.");
   };
 
-  const handleCvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCvFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (cvFileInputRef.current) cvFileInputRef.current.value = "";
     if (!file) return;
 
     if (
       file.type !== "application/pdf" &&
       !file.name.toLowerCase().endsWith(".pdf")
     ) {
-      toast.error("Please upload a PDF document only (.pdf)");
+      toast.error("Choose a PDF file (.pdf)");
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("PDF file exceeds 10MB limit");
+      toast.error("The PDF is larger than 10 MB");
       return;
     }
 
-    const toastId = toast.loading("Loading CV document...");
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setForm((f) => ({
-        ...f,
-        cv_url: result,
-        cv_name: file.name,
-      }));
-      toast.success(
-        `CV attached: "${file.name}"! Click 'Save Changes' to apply.`,
-        {
-          id: toastId,
-        },
-      );
-    };
-    reader.onerror = () => {
-      toast.error("Failed to read CV file", { id: toastId });
-    };
-    reader.readAsDataURL(file);
+    setCvBusy(true);
+    const toastId = toast.loading("Uploading CV...");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await client.put("/portfolio/cv", body, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setHasCv(Boolean(res.data?.has_cv));
+      toast.success("CV uploaded", { id: toastId });
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })
+        .response?.data?.detail;
+      toast.error(detail || "CV upload failed", { id: toastId });
+    } finally {
+      setCvBusy(false);
+    }
   };
 
-  const handleRemoveCv = () => {
-    setForm((f) => ({ ...f, cv_url: "", cv_name: "" }));
-    if (cvFileInputRef.current) {
-      cvFileInputRef.current.value = "";
-    }
+  const handleRemoveCv = async () => {
+    setCvBusy(true);
     try {
-      localStorage.removeItem("portfolio_cv_url");
-      localStorage.removeItem("portfolio_cv_name");
+      await client.delete("/portfolio/cv");
+      setHasCv(false);
+      toast.success("CV removed");
     } catch {
-      // ignore
+      toast.error("Could not remove the CV");
+    } finally {
+      setCvBusy(false);
     }
-    toast.success("CV removed.");
+  };
+
+  const handleDownloadCv = async () => {
+    try {
+      const res = await client.get("/portfolio/cv", { responseType: "blob" });
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "cv.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Could not download the CV");
+    }
   };
 
   const handleSave = async () => {
@@ -487,15 +483,6 @@ function PortfolioConfigTab() {
           localStorage.setItem("portfolio_avatar", form.avatar_url);
         } else {
           localStorage.removeItem("portfolio_avatar");
-        }
-
-        if (form.cv_url) {
-          localStorage.setItem("portfolio_cv_url", form.cv_url);
-          if (form.cv_name)
-            localStorage.setItem("portfolio_cv_name", form.cv_name);
-        } else {
-          localStorage.removeItem("portfolio_cv_url");
-          localStorage.removeItem("portfolio_cv_name");
         }
       } catch (storageErr) {
         console.warn("LocalStorage warning:", storageErr);
@@ -515,14 +502,6 @@ function PortfolioConfigTab() {
         image: form.avatar_url,
         image_url: form.avatar_url,
         profile_image: form.avatar_url,
-        cv: form.cv_url,
-        cv_url: form.cv_url,
-        cv_file: form.cv_url,
-        cv_name: form.cv_name,
-        resume: form.cv_url,
-        resume_url: form.cv_url,
-        pdf: form.cv_url,
-        pdf_url: form.cv_url,
       };
 
       await client.put("/portfolio/config", payload);
@@ -546,7 +525,7 @@ function PortfolioConfigTab() {
   const formFields: Array<{
     key: keyof Omit<
       PortfolioConfigForm,
-      "summary" | "avatar_url" | "cv_url" | "cv_name"
+      "summary" | "avatar_url"
     >;
     label: string;
     type: string;
@@ -567,7 +546,7 @@ function PortfolioConfigTab() {
           <h2 className="text-2xl font-bold text-white">
             Portfolio Configuration
           </h2>
-          <p className="text-sm text-[#8892b0] mt-1">
+          <p className="text-sm text-[#a59cb8] mt-1">
             Customize your public portfolio information, hero image, and bio
             summary.
           </p>
@@ -575,7 +554,7 @@ function PortfolioConfigTab() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#0a192f] font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 active:scale-[0.98] disabled:opacity-60"
+          className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 active:scale-[0.98] disabled:opacity-60"
         >
           {saving ? (
             <Loader2 size={18} className="animate-spin" />
@@ -597,15 +576,15 @@ function PortfolioConfigTab() {
                 Hero Profile Image
               </h3>
             </div>
-            <p className="text-sm text-[#8892b0] mb-4">
+            <p className="text-sm text-[#a59cb8] mb-4">
               Upload a photo to be showcased in the Hero section of your
               portfolio. If no image is provided, a stylized initials avatar
               ("MP") will be shown.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-[#0a192f]/60 border border-[#233554]">
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-[#15121c]/60 border border-[#342c45]">
               {/* Thumbnail preview */}
-              <div className="w-24 h-24 rounded-xl bg-[#112240] border border-[#233554] flex items-center justify-center overflow-hidden shrink-0 relative group">
+              <div className="w-24 h-24 rounded-xl bg-[#1f1a2b] border border-[#342c45] flex items-center justify-center overflow-hidden shrink-0 relative group">
                 {form.avatar_url ? (
                   <img
                     src={form.avatar_url}
@@ -653,7 +632,7 @@ function PortfolioConfigTab() {
                     </button>
                   )}
                 </div>
-                <div className="text-xs text-[#8892b0]">
+                <div className="text-xs text-[#a59cb8]">
                   Supports PNG, JPG, WEBP, SVG (max 5MB)
                 </div>
               </div>
@@ -661,13 +640,13 @@ function PortfolioConfigTab() {
 
             {/* Direct Image URL input */}
             <div className="mt-4">
-              <label className="block text-xs font-medium text-[#8892b0] mb-1.5">
+              <label className="block text-xs font-medium text-[#a59cb8] mb-1.5">
                 Or enter image URL:
               </label>
               <div className="relative">
                 <ImageIcon
                   size={16}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892b0]"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a59cb8]"
                 />
                 <input
                   type="url"
@@ -678,7 +657,7 @@ function PortfolioConfigTab() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, avatar_url: e.target.value }))
                   }
-                  className="w-full pl-10 pr-4 py-2 bg-[#0a192f] border border-[#233554] rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-500"
+                  className="w-full pl-10 pr-4 py-2 bg-[#15121c] border border-[#342c45] rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-500"
                 />
               </div>
             </div>
@@ -692,20 +671,19 @@ function PortfolioConfigTab() {
                 Curriculum Vitae (PDF Document)
               </h3>
             </div>
-            <p className="text-sm text-[#8892b0] mb-4">
-              Upload your CV or resume in PDF format. When visitors or
-              recruiters click the{" "}
-              <strong className="text-amber-400">"Download CV"</strong> button
-              on your portfolio hero, this file will be downloaded or opened.
+            <p className="text-sm text-[#a59cb8] mb-4">
+              Your CV stays private: visitors are asked to email you instead,
+              and only admins can download it from here. Uploading replaces
+              the previous file right away.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-[#0a192f]/60 border border-[#233554]">
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-[#15121c]/60 border border-[#342c45]">
               {/* PDF icon badge */}
-              <div className="w-16 h-16 rounded-xl bg-[#112240] border border-[#233554] flex items-center justify-center shrink-0">
+              <div className="w-16 h-16 rounded-xl bg-[#1f1a2b] border border-[#342c45] flex items-center justify-center shrink-0">
                 <FileText
                   size={32}
                   className={
-                    form.cv_url ? "text-amber-400" : "text-[#8892b0]/40"
+                    hasCv ? "text-amber-400" : "text-[#a59cb8]/40"
                   }
                 />
               </div>
@@ -717,19 +695,26 @@ function PortfolioConfigTab() {
                   type="file"
                   accept="application/pdf,.pdf"
                   onChange={handleCvFileChange}
+                  disabled={cvBusy}
                   className="hidden"
                   id="cv-file-input"
                 />
 
-                {form.cv_url ? (
+                {hasCv ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium text-emerald-400">
                       <FileCheck size={16} />
-                      <span className="truncate">
-                        {form.cv_name || "Curriculum_Vitae.pdf"}
-                      </span>
+                      <span className="truncate">CV on file (private)</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDownloadCv}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1f1a2b] hover:text-amber-300 text-[#ece8f4] border border-[#342c45] rounded-lg text-xs font-medium transition-colors"
+                      >
+                        <FileText size={14} />
+                        Download
+                      </button>
                       <label
                         htmlFor="cv-file-input"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-medium cursor-pointer transition-colors"
@@ -740,6 +725,7 @@ function PortfolioConfigTab() {
                       <button
                         type="button"
                         onClick={handleRemoveCv}
+                        disabled={cvBusy}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-medium transition-colors"
                       >
                         <Trash2 size={14} />
@@ -756,37 +742,11 @@ function PortfolioConfigTab() {
                       <Upload size={16} />
                       Upload PDF Resume / CV
                     </label>
-                    <div className="text-xs text-[#8892b0]">
+                    <div className="text-xs text-[#a59cb8]">
                       Accepts .PDF files only (max 10MB)
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Direct CV URL input */}
-            <div className="mt-4">
-              <label className="block text-xs font-medium text-[#8892b0] mb-1.5">
-                Or enter direct CV download / BE URL:
-              </label>
-              <div className="relative">
-                <FileText
-                  size={16}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892b0]"
-                />
-                <input
-                  type="text"
-                  placeholder="https://example.com/cv.pdf or /media/cv.pdf"
-                  value={form.cv_url.startsWith("data:") ? "" : form.cv_url}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      cv_url: e.target.value,
-                      cv_name: e.target.value ? "Remote_CV.pdf" : "",
-                    }))
-                  }
-                  className="w-full pl-10 pr-4 py-2 bg-[#0a192f] border border-[#233554] rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-500"
-                />
               </div>
             </div>
           </div>
@@ -808,7 +768,7 @@ function PortfolioConfigTab() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, [field.key]: e.target.value }))
                     }
-                    className="w-full px-4 py-2.5 bg-[#0a192f] border border-[#233554] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500"
+                    className="w-full px-4 py-2.5 bg-[#15121c] border border-[#342c45] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500"
                   />
                 </div>
               ))}
@@ -821,11 +781,11 @@ function PortfolioConfigTab() {
               <h3 className="text-lg font-semibold text-white">
                 Bio & About Summary
               </h3>
-              <span className="text-xs text-[#8892b0]">
+              <span className="text-xs text-[#a59cb8]">
                 {form.summary.length} characters
               </span>
             </div>
-            <p className="text-xs text-[#8892b0] mb-3">
+            <p className="text-xs text-[#a59cb8] mb-3">
               This summary is displayed in the "01. About Me" section on your
               public portfolio.
             </p>
@@ -836,7 +796,7 @@ function PortfolioConfigTab() {
               }
               rows={5}
               placeholder="Write your professional bio summary..."
-              className="w-full px-4 py-3 bg-[#0a192f] border border-[#233554] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500 resize-y leading-relaxed text-sm"
+              className="w-full px-4 py-3 bg-[#15121c] border border-[#342c45] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500 resize-y leading-relaxed text-sm"
             />
           </div>
         </div>
@@ -851,14 +811,14 @@ function PortfolioConfigTab() {
               </span>
             </div>
 
-            <div className="bg-[#0a192f] border border-[#233554] rounded-2xl p-6 text-center overflow-hidden relative">
+            <div className="bg-[#15121c] border border-[#342c45] rounded-2xl p-6 text-center overflow-hidden relative">
               {/* Background ambient glow */}
               <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
 
               {/* Hero Avatar Box Preview */}
               <div className="relative inline-block my-2">
-                <div className="w-48 h-48 rounded-2xl bg-[#112240] border border-[#233554] flex items-center justify-center relative overflow-hidden group shadow-xl shadow-black/40">
+                <div className="w-48 h-48 rounded-2xl bg-[#1f1a2b] border border-[#342c45] flex items-center justify-center relative overflow-hidden group shadow-xl shadow-black/40">
                   {form.avatar_url ? (
                     <>
                       <img
@@ -912,19 +872,19 @@ function PortfolioConfigTab() {
               </p>
 
               {/* Meta pills */}
-              <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs text-[#8892b0]">
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs text-[#a59cb8]">
                 {form.location && (
-                  <span className="px-2.5 py-1 rounded-full bg-[#112240] border border-[#233554]">
+                  <span className="px-2.5 py-1 rounded-full bg-[#1f1a2b] border border-[#342c45]">
                     📍 {form.location}
                   </span>
                 )}
                 {form.email && (
-                  <span className="px-2.5 py-1 rounded-full bg-[#112240] border border-[#233554]">
+                  <span className="px-2.5 py-1 rounded-full bg-[#1f1a2b] border border-[#342c45]">
                     ✉️ {form.email}
                   </span>
                 )}
                 {form.phone && (
-                  <span className="px-2.5 py-1 rounded-full bg-[#112240] border border-[#233554]">
+                  <span className="px-2.5 py-1 rounded-full bg-[#1f1a2b] border border-[#342c45]">
                     📞 {form.phone}
                   </span>
                 )}
@@ -932,25 +892,25 @@ function PortfolioConfigTab() {
 
               {/* CV Status Badge Preview */}
               <div className="mt-3 flex items-center justify-center">
-                {form.cv_url ? (
+                {hasCv ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
                     <FileCheck size={13} />
-                    Download CV active ({form.cv_name || "PDF"})
+                    CV on file (private)
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#112240] border border-[#233554] text-[#8892b0] text-xs">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1f1a2b] border border-[#342c45] text-[#a59cb8] text-xs">
                     <FileText size={13} />
-                    No CV attached (Download CV disabled)
+                    No CV uploaded
                   </span>
                 )}
               </div>
 
               {/* About Summary Box Preview */}
-              <div className="mt-6 pt-5 border-t border-[#233554]/60 text-left">
+              <div className="mt-6 pt-5 border-t border-[#342c45]/60 text-left">
                 <p className="text-xs font-mono text-amber-400 mb-2">
                   01. About Me Preview:
                 </p>
-                <div className="p-4 rounded-xl bg-[#112240]/60 border border-[#233554] text-xs text-[#8892b0] leading-relaxed">
+                <div className="p-4 rounded-xl bg-[#1f1a2b]/60 border border-[#342c45] text-xs text-[#a59cb8] leading-relaxed">
                   {form.summary || DEFAULT_PROFILE.summary}
                 </div>
               </div>
@@ -984,6 +944,10 @@ function ExpensesTab() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editSheet, setEditSheet] = useState<ExpenseSheet | null>(null);
+  const [filterMode, setFilterMode] = useState<"all" | "uncategorized" | "categorized">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [updatingCategoryId, setUpdatingCategoryId] = useState<number | null>(null);
+
   const [formData, setFormData] = useState<ExpenseFormData>({
     title: "",
     gross_income: "",
@@ -993,9 +957,8 @@ function ExpensesTab() {
   });
 
   const fetchSheets = useCallback(() => {
-    client
-      .get("/expenses/")
-      .then((res) => setSheets(res.data))
+    getAllPages<ExpenseSheet>("/expenses/")
+      .then(setSheets)
       .catch(() => toast.error("Failed to load expenses"))
       .finally(() => setLoading(false));
   }, []);
@@ -1010,6 +973,31 @@ function ExpensesTab() {
     fetchSheets();
     fetchCategoryList();
   }, [fetchSheets, fetchCategoryList]);
+
+  // Calculations
+  const uncategorizedCount = useMemo(
+    () => sheets.filter((s) => s.category_id === null || s.category_id === undefined).length,
+    [sheets]
+  );
+  const categorizedCount = sheets.length - uncategorizedCount;
+
+  // Filtered sheets
+  const filteredSheets = useMemo(() => {
+    return sheets.filter((s) => {
+      const isUncat = s.category_id === null || s.category_id === undefined;
+      if (filterMode === "uncategorized" && !isUncat) return false;
+      if (filterMode === "categorized" && isUncat) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesTitle = s.title?.toLowerCase().includes(q);
+        const matchesItem = s.items?.some((i) => i.description.toLowerCase().includes(q));
+        if (!matchesTitle && !matchesItem) return false;
+      }
+
+      return true;
+    });
+  }, [sheets, filterMode, searchQuery]);
 
   const openCreate = () => {
     setEditSheet(null);
@@ -1043,6 +1031,28 @@ function ExpensesTab() {
         : [{ description: "", amount: "" }],
     });
     setShowModal(true);
+  };
+
+  const handleInlineAssignCategory = async (sheetId: number, targetCatId: string) => {
+    setUpdatingCategoryId(sheetId);
+    const newCatId = targetCatId ? parseInt(targetCatId, 10) : null;
+    const catName = categories.find((c) => c.id === newCatId)?.title;
+
+    try {
+      await updateExpense(sheetId, { category_id: newCatId });
+      setSheets((prev) =>
+        prev.map((s) => (s.id === sheetId ? { ...s, category_id: newCatId } : s))
+      );
+      if (newCatId) {
+        toast.success(`Expense assigned to "${catName || 'Category'}"`);
+      } else {
+        toast.success("Expense moved to Uncategorized");
+      }
+    } catch {
+      toast.error("Failed to update category assignment");
+    } finally {
+      setUpdatingCategoryId(null);
+    }
   };
 
   const handleSave = async () => {
@@ -1127,82 +1137,190 @@ function ExpensesTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">Expense Tracker</h2>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
+            <Receipt className="text-emerald-400" size={26} />
+            Expense Tracker
+          </h2>
+          <p className="text-sm text-[#a59cb8] mt-0.5">
+            Manage your income and expense sheets. Uncategorized sheets can be assigned to categories below.
+          </p>
+        </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20"
         >
           <Plus size={18} />
           New Sheet
         </button>
       </div>
 
+      {/* Filter Tabs & Search Bar */}
+      <div className="glass-card p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Quick Filter Tabs */}
+        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+          <button
+            onClick={() => setFilterMode("all")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              filterMode === "all"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
+                : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+            }`}
+          >
+            All Sheets ({sheets.length})
+          </button>
+          <button
+            onClick={() => setFilterMode("uncategorized")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              filterMode === "uncategorized"
+                ? "bg-amber-500 text-[#15121c] font-bold shadow-md shadow-amber-500/20"
+                : "bg-slate-900/60 text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"
+            }`}
+          >
+            <Tag size={13} />
+            Uncategorized ({uncategorizedCount})
+          </button>
+          <button
+            onClick={() => setFilterMode("categorized")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              filterMode === "categorized"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+            }`}
+          >
+            Categorized ({categorizedCount})
+          </button>
+        </div>
+
+        {/* Search Box */}
+        <div className="relative w-full sm:w-64">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search sheets..."
+            className="w-full pl-9 pr-3 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 size={32} className="animate-spin text-blue-500" />
+          <Loader2 size={32} className="animate-spin text-emerald-500" />
         </div>
-      ) : sheets.length === 0 ? (
-        <div className="text-center py-20">
-          <Receipt size={48} className="mx-auto text-slate-600 mb-4" />
-          <p className="text-slate-400">
-            No expense sheets yet. Create your first one!
+      ) : filteredSheets.length === 0 ? (
+        <div className="text-center py-16 glass-card border border-dashed border-slate-800">
+          <Receipt size={44} className="mx-auto text-slate-600 mb-3" />
+          <h4 className="text-base font-bold text-white mb-1">No expense sheets found</h4>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            {searchQuery
+              ? "No sheets match your search query."
+              : filterMode === "uncategorized"
+              ? "All expense sheets are currently categorized!"
+              : "No expense sheets yet. Create your first one!"}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {sheets.map((sheet) => {
-            const matchedCategory = categories.find(
-              (c) => c.id === sheet.category_id,
-            );
+          {filteredSheets.map((sheet) => {
+            const isUncategorized = sheet.category_id === null || sheet.category_id === undefined;
+            const matchedCategory = categories.find((c) => c.id === sheet.category_id);
+            const isUpdating = updatingCategoryId === sheet.id;
 
             return (
-              <div key={sheet.id} className="glass-card p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold text-white">
-                      {sheet.title || `Sheet #${sheet.id}`}
-                    </h3>
-                    {sheet.category_id && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900/30 text-blue-300 border border-blue-800/40">
-                        <FolderTree size={12} />
-                        {matchedCategory?.title ||
-                          `Category #${sheet.category_id}`}
-                      </span>
-                    )}
+              <div key={sheet.id} className="glass-card p-6 border-slate-800 hover:border-slate-700 transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                      <h3 className="text-lg font-bold text-white">
+                        {sheet.title || `Sheet #${sheet.id}`}
+                      </h3>
+
+                      {/* Category Status Badge */}
+                      {isUncategorized ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                          <Tag size={11} /> Uncategorized
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-900/30 text-blue-300 border border-blue-800/40">
+                          <FolderTree size={11} /> {matchedCategory?.title || `Category #${sheet.category_id}`}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openEdit(sheet)}
-                      className="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
-                    >
-                      <Edit3 size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(sheet.id)}
-                      className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+
+                  {/* Right Actions: Category Dropdown & Edit/Delete */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* "Assign Category" Dropdown */}
+                    <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl px-2.5 py-1 text-xs">
+                      <span className="text-slate-400 shrink-0 font-medium">Category:</span>
+                      <select
+                        value={sheet.category_id || ""}
+                        disabled={isUpdating}
+                        onChange={(e) => handleInlineAssignCategory(sheet.id, e.target.value)}
+                        className="bg-transparent text-white focus:outline-none cursor-pointer max-w-[150px] truncate text-xs font-medium"
+                      >
+                        <option value="" className="bg-slate-900 text-amber-400">
+                          Uncategorized
+                        </option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id} className="bg-slate-900 text-white">
+                            {c.title}
+                          </option>
+                        ))}
+                      </select>
+                      {isUpdating && <Loader2 size={12} className="animate-spin text-amber-400 shrink-0" />}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEdit(sheet)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
+                        title="Edit sheet"
+                      >
+                        <Edit3 size={15} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(sheet.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
+                        title="Delete sheet"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Amount metrics */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   {[
-                    { label: "Gross Income", value: sheet.gross_income },
+                    { label: "Gross Income", value: sheet.gross_income, color: "text-white" },
                     {
                       label: "Tax Deductions",
                       value: sheet.total_tax_deductions,
+                      color: "text-amber-400",
                     },
-                    { label: "Net Income", value: sheet.net_income },
-                    { label: "Total Expenses", value: sheet.total_expenses },
-                    { label: "Remaining", value: sheet.remaining_income },
+                    { label: "Net Income", value: sheet.net_income, color: "text-white" },
+                    { label: "Total Expenses", value: sheet.total_expenses, color: "text-red-400" },
+                    { label: "Remaining", value: sheet.remaining_income, color: "text-emerald-400" },
                   ].map((item) => (
                     <div
                       key={item.label}
-                      className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3"
+                      className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3"
                     >
                       <p className="text-xs text-slate-400">{item.label}</p>
-                      <p className="text-lg font-bold text-white">
+                      <p className={`text-base sm:text-lg font-bold ${item.color}`}>
                         ₱{(item.value || 0).toLocaleString()}
                       </p>
                     </div>
@@ -1240,7 +1358,7 @@ function ExpensesTab() {
                   onChange={(e) =>
                     setFormData((f) => ({ ...f, title: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white placeholder:text-slate-500"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-white placeholder:text-slate-500"
                   placeholder="Monthly Budget - September"
                 />
               </div>
@@ -1258,7 +1376,7 @@ function ExpensesTab() {
                         gross_income: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white placeholder:text-slate-500"
+                    className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-white placeholder:text-slate-500"
                     placeholder="0.00"
                   />
                 </div>
@@ -1274,7 +1392,7 @@ function ExpensesTab() {
                         category_id: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white"
+                    className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-white"
                   >
                     <option value="">None / Uncategorized</option>
                     {categories.map((c) => (
@@ -1295,7 +1413,7 @@ function ExpensesTab() {
                   <button
                     type="button"
                     onClick={() => addItem("tax_deductions")}
-                    className="text-sm text-blue-400 hover:underline flex items-center gap-1"
+                    className="text-sm text-emerald-400 hover:underline flex items-center gap-1"
                   >
                     <Plus size={14} /> Add
                   </button>
@@ -1314,7 +1432,7 @@ function ExpensesTab() {
                           e.target.value,
                         )
                       }
-                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder:text-slate-500"
+                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-white placeholder:text-slate-500"
                     />
                     <input
                       type="number"
@@ -1328,7 +1446,7 @@ function ExpensesTab() {
                           e.target.value,
                         )
                       }
-                      className="w-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder:text-slate-500"
+                      className="w-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-white placeholder:text-slate-500"
                     />
                     {formData.tax_deductions.length > 1 && (
                       <button
@@ -1353,7 +1471,7 @@ function ExpensesTab() {
                     <button
                       type="button"
                       onClick={() => addItem("items")}
-                      className="text-sm text-blue-400 hover:underline flex items-center gap-1"
+                      className="text-sm text-emerald-400 hover:underline flex items-center gap-1"
                     >
                       <Plus size={14} /> Add
                     </button>
@@ -1372,7 +1490,7 @@ function ExpensesTab() {
                             e.target.value,
                           )
                         }
-                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder:text-slate-500"
+                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-white placeholder:text-slate-500"
                       />
                       <input
                         type="number"
@@ -1381,7 +1499,7 @@ function ExpensesTab() {
                         onChange={(e) =>
                           updateItem("items", idx, "amount", e.target.value)
                         }
-                        className="w-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder:text-slate-500"
+                        className="w-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-white placeholder:text-slate-500"
                       />
                       {formData.items.length > 1 && (
                         <button
@@ -1399,7 +1517,7 @@ function ExpensesTab() {
 
               <button
                 onClick={handleSave}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25"
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/25"
               >
                 {editSheet ? "Update Sheet" : "Create Sheet"}
               </button>
@@ -1420,6 +1538,10 @@ function MedicationsTab() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editMed, setEditMed] = useState<Medication | null>(null);
+  const [filterMode, setFilterMode] = useState<"all" | "uncategorized" | "categorized">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [updatingCategoryId, setUpdatingCategoryId] = useState<number | null>(null);
+
   const [form, setForm] = useState({
     name: "",
     cost: "",
@@ -1428,9 +1550,8 @@ function MedicationsTab() {
   });
 
   const fetchMeds = useCallback(() => {
-    client
-      .get("/medications/")
-      .then((res) => setMeds(res.data))
+    getAllPages<Medication>("/medications/")
+      .then(setMeds)
       .catch(() => toast.error("Failed to load medications"))
       .finally(() => setLoading(false));
   }, []);
@@ -1445,6 +1566,29 @@ function MedicationsTab() {
     fetchMeds();
     fetchCategoryList();
   }, [fetchMeds, fetchCategoryList]);
+
+  // Counts
+  const uncategorizedCount = useMemo(
+    () => meds.filter((m) => m.category_id === null || m.category_id === undefined).length,
+    [meds]
+  );
+  const categorizedCount = meds.length - uncategorizedCount;
+
+  // Filtered meds
+  const filteredMeds = useMemo(() => {
+    return meds.filter((m) => {
+      const isUncat = m.category_id === null || m.category_id === undefined;
+      if (filterMode === "uncategorized" && !isUncat) return false;
+      if (filterMode === "categorized" && isUncat) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        if (!m.name.toLowerCase().includes(q)) return false;
+      }
+
+      return true;
+    });
+  }, [meds, filterMode, searchQuery]);
 
   const openCreate = () => {
     setEditMed(null);
@@ -1461,6 +1605,28 @@ function MedicationsTab() {
       category_id: med.category_id ? String(med.category_id) : "",
     });
     setShowModal(true);
+  };
+
+  const handleInlineAssignCategory = async (medId: number, targetCatId: string) => {
+    setUpdatingCategoryId(medId);
+    const newCatId = targetCatId ? parseInt(targetCatId, 10) : null;
+    const catName = categories.find((c) => c.id === newCatId)?.title;
+
+    try {
+      await updateMedication(medId, { category_id: newCatId });
+      setMeds((prev) =>
+        prev.map((m) => (m.id === medId ? { ...m, category_id: newCatId } : m))
+      );
+      if (newCatId) {
+        toast.success(`Medication assigned to "${catName || 'Category'}"`);
+      } else {
+        toast.success("Medication moved to Uncategorized");
+      }
+    } catch {
+      toast.error("Failed to update medication category");
+    } finally {
+      setUpdatingCategoryId(null);
+    }
   };
 
   const handleSave = async () => {
@@ -1512,87 +1678,197 @@ function MedicationsTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">Medication Tracker</h2>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
+            <Pill className="text-purple-400" size={26} />
+            Medication Tracker
+          </h2>
+          <p className="text-sm text-[#a59cb8] mt-0.5">
+            Track daily medications, dosage logs, and costs. Uncategorized items can be assigned directly to categories below.
+          </p>
+        </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-purple-500/25"
         >
           <Plus size={18} />
           Add Medication
         </button>
       </div>
 
+      {/* Filter Tabs & Search Bar */}
+      <div className="glass-card p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Quick Filter Tabs */}
+        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+          <button
+            onClick={() => setFilterMode("all")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              filterMode === "all"
+                ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+                : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+            }`}
+          >
+            All Meds ({meds.length})
+          </button>
+          <button
+            onClick={() => setFilterMode("uncategorized")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              filterMode === "uncategorized"
+                ? "bg-amber-500 text-[#15121c] font-bold shadow-md shadow-amber-500/20"
+                : "bg-slate-900/60 text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"
+            }`}
+          >
+            <Tag size={13} />
+            Uncategorized ({uncategorizedCount})
+          </button>
+          <button
+            onClick={() => setFilterMode("categorized")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              filterMode === "categorized"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+            }`}
+          >
+            Categorized ({categorizedCount})
+          </button>
+        </div>
+
+        {/* Search Box */}
+        <div className="relative w-full sm:w-64">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search medications..."
+            className="w-full pl-9 pr-3 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 size={32} className="animate-spin text-blue-500" />
+          <Loader2 size={32} className="animate-spin text-purple-500" />
         </div>
-      ) : meds.length === 0 ? (
-        <div className="text-center py-20">
-          <Pill size={48} className="mx-auto text-slate-600 mb-4" />
-          <p className="text-slate-400">No medications tracked yet.</p>
+      ) : filteredMeds.length === 0 ? (
+        <div className="text-center py-16 glass-card border border-dashed border-slate-800">
+          <Pill size={44} className="mx-auto text-slate-600 mb-3" />
+          <h4 className="text-base font-bold text-white mb-1">No medications found</h4>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            {searchQuery
+              ? "No medications match your search query."
+              : filterMode === "uncategorized"
+              ? "All tracked medications are currently categorized!"
+              : "No medications tracked yet. Add your first one!"}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {meds.map((med) => {
+          {filteredMeds.map((med) => {
+            const isUncategorized = med.category_id === null || med.category_id === undefined;
             const matchedCat = categories.find((c) => c.id === med.category_id);
+            const isUpdating = updatingCategoryId === med.id;
 
             return (
-              <div key={med.id} className="glass-card p-6">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-white">
-                        {med.name}
-                      </h3>
-                      {med.category_id && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-900/30 text-purple-300 border border-purple-800/40">
-                          <FolderTree size={11} />
-                          {matchedCat?.title || `Category #${med.category_id}`}
-                        </span>
-                      )}
+              <div key={med.id} className="glass-card p-6 border-slate-800 hover:border-purple-500/40 transition-all flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-lg font-bold text-white">
+                          {med.name}
+                        </h3>
+                        {isUncategorized ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                            <Tag size={11} /> Uncategorized
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-900/30 text-purple-300 border border-purple-800/40">
+                            <FolderTree size={11} />
+                            {matchedCat?.title || `Category #${med.category_id}`}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        ₱{(med.cost || 0).toFixed(2)} per dose
+                      </p>
                     </div>
-                    <p className="text-sm text-slate-400">
-                      ₱{(med.cost || 0).toFixed(2)} per dose
-                    </p>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => openEdit(med)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
+                        title="Edit medication"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(med.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
+                        title="Delete medication"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => openEdit(med)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-all"
-                    >
-                      <Edit3 size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(med.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+
+                  {/* Inline Category Assignment Dropdown */}
+                  <div className="my-3 flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+                    <span className="text-slate-400 shrink-0 font-medium">Category:</span>
+                    <div className="flex items-center gap-1 min-w-0">
+                      <select
+                        value={med.category_id || ""}
+                        disabled={isUpdating}
+                        onChange={(e) => handleInlineAssignCategory(med.id, e.target.value)}
+                        className="bg-transparent text-white focus:outline-none cursor-pointer max-w-[170px] truncate text-xs font-medium"
+                      >
+                        <option value="" className="bg-slate-900 text-amber-400">
+                          Uncategorized
+                        </option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id} className="bg-slate-900 text-white">
+                            {c.title}
+                          </option>
+                        ))}
+                      </select>
+                      {isUpdating && <Loader2 size={12} className="animate-spin text-amber-400 shrink-0" />}
+                    </div>
+                  </div>
+
+                  {/* Metric stats */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-400">Doses Taken</p>
+                      <p className="text-xl font-bold text-white mt-0.5">
+                        {med.doses_taken}
+                      </p>
+                    </div>
+                    <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-400">Total Spent</p>
+                      <p className="text-xl font-bold text-purple-300 mt-0.5">
+                        ₱
+                        {(
+                          med.total_spent ||
+                          med.cost * med.doses_taken ||
+                          0
+                        ).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
-                    <p className="text-xs text-slate-400">Doses Taken</p>
-                    <p className="text-2xl font-bold text-white">
-                      {med.doses_taken}
-                    </p>
-                  </div>
-                  <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-center">
-                    <p className="text-xs text-slate-400">Total Spent</p>
-                    <p className="text-2xl font-bold text-emerald-400">
-                      ₱
-                      {(
-                        med.total_spent ||
-                        med.cost * med.doses_taken ||
-                        0
-                      ).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
+
                 <button
                   onClick={() => handleTakeDose(med.id)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/30 border border-emerald-800/40 font-medium rounded-xl transition-all"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white border border-purple-500/30 font-medium rounded-xl transition-all active:scale-95 text-xs sm:text-sm"
                 >
                   <Plus size={16} />
                   +1 Take Dose
@@ -1629,7 +1905,7 @@ function MedicationsTab() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, name: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder:text-slate-500"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-white placeholder:text-slate-500"
                   placeholder="Medication name"
                 />
               </div>
@@ -1643,7 +1919,7 @@ function MedicationsTab() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, cost: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder:text-slate-500"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-white placeholder:text-slate-500"
                   placeholder="0.00"
                 />
               </div>
@@ -1656,7 +1932,7 @@ function MedicationsTab() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, category_id: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-white"
                 >
                   <option value="">None / Uncategorized</option>
                   {categories.map((c) => (
@@ -1676,13 +1952,13 @@ function MedicationsTab() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, doses_taken: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder:text-slate-500"
+                  className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-white placeholder:text-slate-500"
                   placeholder="0"
                 />
               </div>
               <button
                 onClick={handleSave}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-500/25"
+                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-purple-500/25"
               >
                 {editMed ? "Update" : "Add Medication"}
               </button>
@@ -1697,17 +1973,23 @@ function MedicationsTab() {
 /* ═══════════════════════════════════════════════
    USER MANAGEMENT TAB
    ═══════════════════════════════════════════════ */
+const USERS_PAGE_SIZE = 20;
+
 function UsersTab() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
 
   const fetchUsers = useCallback(() => {
-    client
-      .get("/admin/users")
-      .then((res) => setUsers(res.data))
+    getPage<AdminUser>("/admin/users", USERS_PAGE_SIZE, offset)
+      .then(({ items, total }) => {
+        setUsers(items);
+        setTotal(total);
+      })
       .catch(() => toast.error("Failed to load users"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [offset]);
 
   useEffect(() => {
     fetchUsers();
@@ -1823,6 +2105,29 @@ function UsersTab() {
               </tbody>
             </table>
           </div>
+          {total > USERS_PAGE_SIZE && (
+            <div className="flex items-center justify-between px-6 py-3 border-t border-[#342c45] text-sm text-[#a59cb8]">
+              <span>
+                Showing {offset + 1}–{Math.min(offset + USERS_PAGE_SIZE, total)} of {total}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setOffset((o) => Math.max(0, o - USERS_PAGE_SIZE))}
+                  disabled={offset === 0}
+                  className="px-3 py-1.5 rounded-lg border border-[#342c45] hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setOffset((o) => o + USERS_PAGE_SIZE)}
+                  disabled={offset + USERS_PAGE_SIZE >= total}
+                  className="px-3 py-1.5 rounded-lg border border-[#342c45] hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1845,6 +2150,8 @@ export default function AdminDashboard() {
         return <CategoriesOverview embedded />;
       case "expenses":
         return <ExpensesTab />;
+      case "savings":
+        return <SavingsView embedded />;
       case "medications":
         return <MedicationsTab />;
       case "users":
@@ -1855,7 +2162,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a192f] pt-20 text-[#e2e8f0]">
+    <div className="min-h-screen bg-[#15121c] pt-20 text-[#ece8f4]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tab Navigation */}
         <div className="flex overflow-x-auto gap-2 mb-8 pb-1 scrollbar-none">
@@ -1868,8 +2175,8 @@ export default function AdminDashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                   isActive
-                    ? "bg-amber-500 text-[#0a192f] font-semibold shadow-lg shadow-amber-500/20"
-                    : "text-[#8892b0] hover:bg-[#112240] hover:text-amber-300 border border-transparent hover:border-[#233554]"
+                    ? "bg-amber-500 text-[#15121c] font-semibold shadow-lg shadow-amber-500/20"
+                    : "text-[#a59cb8] hover:bg-[#1f1a2b] hover:text-amber-300 border border-transparent hover:border-[#342c45]"
                 }`}
               >
                 <Icon size={18} />

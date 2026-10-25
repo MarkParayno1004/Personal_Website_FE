@@ -1,8 +1,10 @@
-import client from "./client";
+import client, { getAllPages } from "./client";
 import type {
   Category,
   CreateCategoryPayload,
   UpdateCategoryPayload,
+  LinkItemsPayload,
+  UnlinkItemsPayload,
   CategoryExpenseCreatePayload,
   CategoryMedicationCreatePayload,
   Expense,
@@ -10,8 +12,7 @@ import type {
 } from "../types";
 
 export const getCategories = async (): Promise<Category[]> => {
-  const res = await client.get<Category[]>("/categories/");
-  return res.data;
+  return getAllPages<Category>("/categories/");
 };
 
 export const getCategory = async (id: number): Promise<Category> => {
@@ -36,6 +37,48 @@ export const updateCategory = async (
 
 export const deleteCategory = async (id: number): Promise<void> => {
   await client.delete(`/categories/${id}`);
+};
+
+/**
+ * Bulk link uncategorized expenses and/or medications to a category.
+ * Calls POST /categories/:id/link (with fallback to /import if required).
+ */
+export const linkCategoryItems = async (
+  categoryId: number,
+  payload: LinkItemsPayload
+): Promise<Category> => {
+  try {
+    const res = await client.post<Category>(
+      `/categories/${categoryId}/link`,
+      payload
+    );
+    return res.data;
+  } catch (err: unknown) {
+    const axiosError = err as { response?: { status?: number } };
+    if (axiosError?.response?.status === 404) {
+      const res = await client.post<Category>(
+        `/categories/${categoryId}/import`,
+        payload
+      );
+      return res.data;
+    }
+    throw err;
+  }
+};
+
+/**
+ * Bulk unlink expenses and/or medications from a category back to uncategorized (category_id: null).
+ * Calls POST /categories/:id/unlink.
+ */
+export const unlinkCategoryItems = async (
+  categoryId: number,
+  payload: UnlinkItemsPayload
+): Promise<Category> => {
+  const res = await client.post<Category>(
+    `/categories/${categoryId}/unlink`,
+    payload
+  );
+  return res.data;
 };
 
 export const createCategoryExpense = async (
@@ -66,6 +109,8 @@ export default {
   createCategory,
   updateCategory,
   deleteCategory,
+  linkCategoryItems,
+  unlinkCategoryItems,
   createCategoryExpense,
   createCategoryMedication,
 };
