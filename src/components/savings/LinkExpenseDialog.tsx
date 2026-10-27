@@ -29,36 +29,26 @@ export default function LinkExpenseDialog({
   expenses: passedExpenses,
   onSuccess,
 }: LinkExpenseDialogProps) {
-  const [expenses, setExpenses] = useState<Expense[]>(passedExpenses || []);
-  const [loadingExpenses, setLoadingExpenses] = useState(false);
-  const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(null);
+  const hasPassedExpenses = Boolean(passedExpenses?.length);
+  const [fetchedExpenses, setFetchedExpenses] = useState<Expense[]>([]);
+  const [loadingExpenses, setLoadingExpenses] = useState(isOpen && !hasPassedExpenses);
+  const expenses = passedExpenses?.length ? passedExpenses : fetchedExpenses;
+  // Parent remounts this dialog via `key` on open / saving change
+  const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(
+    saving?.expense_id ?? null
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load expenses if not passed in
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || hasPassedExpenses) return;
 
-    if (passedExpenses && passedExpenses.length > 0) {
-      setExpenses(passedExpenses);
-    } else {
-      setLoadingExpenses(true);
-      getExpenses()
-        .then((data) => setExpenses(data))
-        .catch(() => toast.error("Failed to load expenses"))
-        .finally(() => setLoadingExpenses(false));
-    }
-  }, [isOpen, passedExpenses]);
-
-  // Set initial selected expense
-  useEffect(() => {
-    if (saving) {
-      setSelectedExpenseId(saving.expense_id ?? null);
-    } else {
-      setSelectedExpenseId(null);
-    }
-    setSearchQuery("");
-  }, [saving, isOpen]);
+    getExpenses()
+      .then((data) => setFetchedExpenses(data))
+      .catch(() => toast.error("Failed to load expenses"))
+      .finally(() => setLoadingExpenses(false));
+  }, [isOpen, hasPassedExpenses]);
 
   if (!isOpen || !saving) return null;
 

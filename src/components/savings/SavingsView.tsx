@@ -60,28 +60,32 @@ export default function SavingsView({ embedded = false }: SavingsViewProps) {
   const [collapsedExpenses, setCollapsedExpenses] = useState<Record<number, boolean>>({});
 
   // Fetch all data
-  const fetchData = useCallback(async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
-    else setRefreshing(true);
-
-    try {
-      const [savingsData, expensesData] = await Promise.all([
-        getSavings(),
-        getExpenses(),
-      ]);
-      setSavings(savingsData);
-      setExpenses(expensesData);
-    } catch {
-      toast.error("Failed to load savings or expenses");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  // `loading` starts true for the initial load; refreshes go through refreshData.
+  const fetchData = useCallback(
+    () =>
+      Promise.all([getSavings(), getExpenses()])
+        .then(([savingsData, expensesData]) => {
+          setSavings(savingsData);
+          setExpenses(expensesData);
+        })
+        .catch(() => {
+          toast.error("Failed to load savings or expenses");
+        })
+        .finally(() => {
+          setLoading(false);
+          setRefreshing(false);
+        }),
+    []
+  );
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const refreshData = () => {
+    setRefreshing(true);
+    fetchData();
+  };
 
   // Aggregate computations
   const totalSavingsAmount = useMemo(() => {
@@ -200,7 +204,7 @@ export default function SavingsView({ embedded = false }: SavingsViewProps) {
   };
 
   const handleFormSuccess = () => {
-    fetchData(true);
+    refreshData();
   };
 
   const handleDeleteSuccess = (deletedId: number) => {
@@ -291,7 +295,7 @@ export default function SavingsView({ embedded = false }: SavingsViewProps) {
           </div>
 
           <button
-            onClick={() => fetchData(true)}
+            onClick={refreshData}
             disabled={refreshing}
             className="p-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
             title="Refresh data"
@@ -843,6 +847,7 @@ export default function SavingsView({ embedded = false }: SavingsViewProps) {
 
       {/* Saving Form Modal (Create & Edit) */}
       <SavingFormDialog
+        key={`${showFormModal}-${editingSaving?.id}-${formInitialExpenseId}`}
         isOpen={showFormModal}
         onClose={() => setShowFormModal(false)}
         onSuccess={handleFormSuccess}
@@ -853,6 +858,7 @@ export default function SavingsView({ embedded = false }: SavingsViewProps) {
 
       {/* Link Expense Dialog */}
       <LinkExpenseDialog
+        key={`${showLinkModal}-${linkTargetSaving?.id}`}
         isOpen={showLinkModal}
         onClose={() => setShowLinkModal(false)}
         saving={linkTargetSaving}

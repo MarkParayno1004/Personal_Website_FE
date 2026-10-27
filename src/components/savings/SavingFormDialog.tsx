@@ -41,34 +41,39 @@ export default function SavingFormDialog({
 }: SavingFormDialogProps) {
   const isEditing = Boolean(saving);
 
-  // Form states
-  const [title, setTitle] = useState("");
-  const [expenseId, setExpenseId] = useState<string>("");
-  const [items, setItems] = useState<ItemRow[]>([
-    { description: "", amount: "" },
-  ]);
+  // Form states (parent remounts this dialog via `key` on open / saving change)
+  const [title, setTitle] = useState(saving?.title || "");
+  const [expenseId, setExpenseId] = useState<string>(() => {
+    const id = saving ? saving.expense_id : initialExpenseId;
+    return id !== null && id !== undefined ? String(id) : "";
+  });
+  const [items, setItems] = useState<ItemRow[]>(() =>
+    saving?.items && saving.items.length > 0
+      ? saving.items.map((item) => ({
+          id: item.id,
+          description: item.description,
+          amount: String(item.amount ?? ""),
+        }))
+      : [{ description: "", amount: "" }]
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Expenses list state
-  const [expenses, setExpenses] = useState<Expense[]>(availableExpenses || []);
-  const [loadingExpenses, setLoadingExpenses] = useState(false);
+  // Expenses list: use props when provided, otherwise fetch
+  const hasPassedExpenses = Boolean(availableExpenses?.length);
+  const [fetchedExpenses, setFetchedExpenses] = useState<Expense[]>([]);
+  const [loadingExpenses, setLoadingExpenses] = useState(isOpen && !hasPassedExpenses);
+  const expenses = availableExpenses?.length ? availableExpenses : fetchedExpenses;
 
   // Load available expenses if not passed in props
   useEffect(() => {
-    if (!isOpen) return;
-
-    if (availableExpenses && availableExpenses.length > 0) {
-      setExpenses(availableExpenses);
-      return;
-    }
+    if (!isOpen || hasPassedExpenses) return;
 
     let isMounted = true;
-    setLoadingExpenses(true);
 
     getExpenses()
       .then((data) => {
         if (isMounted) {
-          setExpenses(data);
+          setFetchedExpenses(data);
         }
       })
       .catch(() => {
@@ -85,40 +90,7 @@ export default function SavingFormDialog({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, availableExpenses]);
-
-  // Initialize or reset form when modal opens or saving changes
-  useEffect(() => {
-    if (!isOpen) return;
-
-    if (saving) {
-      setTitle(saving.title || "");
-      setExpenseId(
-        saving.expense_id !== null && saving.expense_id !== undefined
-          ? String(saving.expense_id)
-          : ""
-      );
-      if (saving.items && saving.items.length > 0) {
-        setItems(
-          saving.items.map((item) => ({
-            id: item.id,
-            description: item.description,
-            amount: String(item.amount ?? ""),
-          }))
-        );
-      } else {
-        setItems([{ description: "", amount: "" }]);
-      }
-    } else {
-      setTitle("");
-      setExpenseId(
-        initialExpenseId !== null && initialExpenseId !== undefined
-          ? String(initialExpenseId)
-          : ""
-      );
-      setItems([{ description: "", amount: "" }]);
-    }
-  }, [isOpen, saving, initialExpenseId]);
+  }, [isOpen, hasPassedExpenses]);
 
   // Calculate live subtotal
   const totalAmount = useMemo(() => {
@@ -293,7 +265,7 @@ export default function SavingFormDialog({
                 <select
                   value={expenseId}
                   onChange={(e) => setExpenseId(e.target.value)}
-                  disabled={loadingExpenses || isSubmitting}
+                  disabled={(loadingExpenses && !hasPassedExpenses) || isSubmitting}
                   className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer appearance-none pr-8 font-medium transition-all"
                 >
                   <option value="" className="bg-slate-900 text-amber-300 font-semibold">
