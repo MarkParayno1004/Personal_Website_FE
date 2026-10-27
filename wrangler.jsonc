@@ -1,6 +1,7 @@
 ﻿{
   "name": "personal-website-fe",
   "compatibility_date": "2026-10-20",
+  "vars": {},
   // SPA fallback: unknown paths serve /index.html with 200 (replaces public/_redirects, which Workers rejects as a loop).
   "assets": {
     "directory": "./dist",
