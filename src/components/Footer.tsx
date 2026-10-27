@@ -1,7 +1,8 @@
 import { Heart, Mail, ArrowUpRight } from "lucide-react";
 import { GithubIcon as Github, LinkedinIcon as Linkedin } from "./BrandIcons";
+import type { PortfolioProfile } from "../types";
 
-export default function Footer() {
+export default function Footer({ profile }: { profile: PortfolioProfile }) {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -25,23 +26,27 @@ export default function Footer() {
             from you.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <a
-              href="mailto:paraynomarkphilip@gmail.com"
-              className="inline-flex items-center gap-2 px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 active:scale-[0.98]"
-            >
-              <Mail size={18} />
-              Say Hello
-            </a>
-            <a
-              href="https://www.linkedin.com/in/mark-philip-parayno/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-8 py-3.5 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 font-medium rounded-lg transition-all duration-200"
-            >
-              <Linkedin size={18} />
-              Connect on LinkedIn
-              <ArrowUpRight size={14} />
-            </a>
+            {profile.email && (
+              <a
+                href={`mailto:${profile.email}`}
+                className="inline-flex items-center gap-2 px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 active:scale-[0.98]"
+              >
+                <Mail size={18} />
+                Say Hello
+              </a>
+            )}
+            {profile.linkedin && (
+              <a
+                href={profile.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-8 py-3.5 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 font-medium rounded-lg transition-all duration-200"
+              >
+                <Linkedin size={18} />
+                Connect on LinkedIn
+                <ArrowUpRight size={14} />
+              </a>
+            )}
           </div>
         </div>
       </section>
@@ -54,16 +59,19 @@ export default function Footer() {
             <div>
               <div className="flex items-center gap-2.5 mb-3">
                 <div className="w-8 h-8 bg-[#1f1a2b] rounded-lg flex items-center justify-center text-amber-400 text-sm font-bold border border-amber-500/30">
-                  MP
+                  {profile.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .join("")}
                 </div>
                 <span className="text-lg font-bold text-white">
-                  Mark Philip V. Parayno
+                  {profile.name}
                 </span>
               </div>
               <p className="text-sm text-[#a59cb8] leading-relaxed">
-                Software Engineer specializing in Mobile (Flutter) & Web
-                Applications. Building production-grade solutions for enterprise
-                clients.
+                {profile.headline}
               </p>
             </div>
 
@@ -94,42 +102,48 @@ export default function Footer() {
                 Connect
               </h3>
               <div className="flex items-center gap-3">
-                <a
-                  href="https://github.com/MarkParayno1004"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2.5 rounded-lg text-[#a59cb8] hover:text-amber-400 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all"
-                  aria-label="GitHub"
-                >
-                  <Github size={20} />
-                </a>
-                <a
-                  href="https://www.linkedin.com/in/mark-philip-parayno/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2.5 rounded-lg text-[#a59cb8] hover:text-amber-400 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all"
-                  aria-label="LinkedIn"
-                >
-                  <Linkedin size={20} />
-                </a>
-                <a
-                  href="mailto:paraynomarkphilip@gmail.com"
-                  className="p-2.5 rounded-lg text-[#a59cb8] hover:text-amber-400 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all"
-                  aria-label="Email"
-                >
-                  <Mail size={20} />
-                </a>
+                {profile.github && (
+                  <a
+                    href={profile.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2.5 rounded-lg text-[#a59cb8] hover:text-amber-400 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all"
+                    aria-label="GitHub"
+                  >
+                    <Github size={20} />
+                  </a>
+                )}
+                {profile.linkedin && (
+                  <a
+                    href={profile.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2.5 rounded-lg text-[#a59cb8] hover:text-amber-400 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all"
+                    aria-label="LinkedIn"
+                  >
+                    <Linkedin size={20} />
+                  </a>
+                )}
+                {profile.email && (
+                  <a
+                    href={`mailto:${profile.email}`}
+                    className="p-2.5 rounded-lg text-[#a59cb8] hover:text-amber-400 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all"
+                    aria-label="Email"
+                  >
+                    <Mail size={20} />
+                  </a>
+                )}
               </div>
-              <p className="mt-3 text-sm text-[#a59cb8]">
-                paraynomarkphilip@gmail.com
-              </p>
+              {profile.email && (
+                <p className="mt-3 text-sm text-[#a59cb8]">{profile.email}</p>
+              )}
             </div>
           </div>
 
           {/* Bottom Bar */}
           <div className="mt-10 pt-6 border-t border-[#342c45]/50 flex flex-col sm:flex-row items-center justify-between gap-2">
             <p className="text-sm text-[#a59cb8]">
-              © {currentYear} Mark Philip V. Parayno. All rights reserved.
+              © {currentYear} {profile.name}. All rights reserved.
             </p>
             <p className="flex items-center gap-1 text-sm text-[#a59cb8]">
               Built with{" "}

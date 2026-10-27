@@ -207,18 +207,6 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
   );
 }
 
-const DEFAULT_PROFILE = {
-  full_name: "Mark Philip V. Parayno",
-  headline: "Software Engineer | Full Stack & Mobile Developer (Flutter)",
-  location: "San Juan City, Philippines",
-  email: "paraynomarkphilip@gmail.com",
-  phone: "+63 961 312 8973",
-  linkedin_url: "https://www.linkedin.com/in/mark-philip-parayno/",
-  github_username: "MarkParayno1004",
-  summary:
-    "Results-driven Software Engineer, Full Stack and Mobile Developer with hands-on production experience building cross-platform mobile apps (Flutter) and web applications (React, TypeScript, Svelte, Django, Laravel). Skilled in clean architecture, API optimization, and scalable cloud solutions.",
-};
-
 interface PortfolioConfigForm {
   full_name: string;
   headline: string;
@@ -298,6 +286,7 @@ function compressImage(
    ═══════════════════════════════════════════════ */
 function PortfolioConfigTab() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
@@ -305,14 +294,14 @@ function PortfolioConfigTab() {
   const [hasCv, setHasCv] = useState(false);
   const [cvBusy, setCvBusy] = useState(false);
   const [form, setForm] = useState<PortfolioConfigForm>({
-    full_name: DEFAULT_PROFILE.full_name,
-    headline: DEFAULT_PROFILE.headline,
-    location: DEFAULT_PROFILE.location,
-    email: DEFAULT_PROFILE.email,
-    phone: DEFAULT_PROFILE.phone,
-    linkedin_url: DEFAULT_PROFILE.linkedin_url,
-    github_username: DEFAULT_PROFILE.github_username,
-    summary: DEFAULT_PROFILE.summary,
+    full_name: "",
+    headline: "",
+    location: "",
+    email: "",
+    phone: "",
+    linkedin_url: "",
+    github_username: "",
+    summary: "",
     avatar_url: "",
   });
 
@@ -321,48 +310,29 @@ function PortfolioConfigTab() {
       .get("/portfolio/config")
       .then((res) => {
         const raw = res.data || {};
-        const bioSummary =
-          raw.about_summary ??
-          raw.summary ??
-          raw.about ??
-          raw.bio ??
-          DEFAULT_PROFILE.summary;
-
-        const avatar =
-          raw.avatar_url ||
-          raw.avatar ||
-          raw.image ||
-          raw.image_url ||
-          raw.profile_image ||
-          localStorage.getItem("portfolio_avatar") ||
-          "";
-
         setHasCv(Boolean(raw.has_cv));
-
+        setLoadError(false);
         setForm({
-          full_name: raw.full_name || raw.name || DEFAULT_PROFILE.full_name,
-          headline: raw.headline || DEFAULT_PROFILE.headline,
-          location: raw.location || DEFAULT_PROFILE.location,
-          email: raw.email || DEFAULT_PROFILE.email,
-          phone: raw.phone || DEFAULT_PROFILE.phone,
-          linkedin_url:
-            raw.linkedin_url || raw.linkedin || DEFAULT_PROFILE.linkedin_url,
-          github_username:
-            raw.github_username ||
-            raw.github ||
-            DEFAULT_PROFILE.github_username,
-          summary: bioSummary || DEFAULT_PROFILE.summary,
-          avatar_url: avatar,
+          full_name: raw.full_name || raw.name || "",
+          headline: raw.headline || "",
+          location: raw.location || "",
+          email: raw.email || "",
+          phone: raw.phone || "",
+          linkedin_url: raw.linkedin_url || raw.linkedin || "",
+          github_username: raw.github_username || raw.github || "",
+          summary: raw.about_summary ?? raw.summary ?? raw.about ?? raw.bio ?? "",
+          avatar_url:
+            raw.avatar_url ||
+            raw.avatar ||
+            raw.image ||
+            raw.image_url ||
+            raw.profile_image ||
+            "",
         });
       })
       .catch(() => {
-        toast.error(
-          "Failed to load portfolio config from server, loaded defaults",
-        );
-        setForm((prev) => ({
-          ...prev,
-          avatar_url: localStorage.getItem("portfolio_avatar") || "",
-        }));
+        toast.error("Failed to load portfolio config from server");
+        setLoadError(true);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -401,11 +371,6 @@ function PortfolioConfigTab() {
     setForm((f) => ({ ...f, avatar_url: "" }));
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
-    }
-    try {
-      localStorage.removeItem("portfolio_avatar");
-    } catch {
-      // ignore
     }
     toast.success("Image removed. Switched to initials avatar.");
   };
@@ -477,18 +442,6 @@ function PortfolioConfigTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // 1. Safe localStorage caching
-      try {
-        if (form.avatar_url) {
-          localStorage.setItem("portfolio_avatar", form.avatar_url);
-        } else {
-          localStorage.removeItem("portfolio_avatar");
-        }
-      } catch (storageErr) {
-        console.warn("LocalStorage warning:", storageErr);
-      }
-
-      // 2. Submit to backend API
       const payload = {
         ...form,
         name: form.full_name,
@@ -507,8 +460,10 @@ function PortfolioConfigTab() {
       await client.put("/portfolio/config", payload);
       toast.success("Portfolio config updated successfully!");
       fetchConfig();
-    } catch {
-      toast.success("Portfolio config saved locally!");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })
+        .response?.data?.detail;
+      toast.error(detail || "Failed to save portfolio config");
     } finally {
       setSaving(false);
     }
@@ -518,6 +473,24 @@ function PortfolioConfigTab() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 size={32} className="animate-spin text-amber-500" />
+      </div>
+    );
+  }
+
+  // Never show an empty form after a failed load: saving it would wipe the stored config.
+  if (loadError) {
+    return (
+      <div className="text-center py-20 text-[#a59cb8]">
+        <p className="mb-4">Could not load the portfolio config.</p>
+        <button
+          onClick={() => {
+            setLoading(true);
+            fetchConfig();
+          }}
+          className="px-5 py-2 border border-amber-500/30 text-amber-400 rounded-xl hover:bg-amber-500/10"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -832,7 +805,7 @@ function PortfolioConfigTab() {
                     <>
                       <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       <span className="text-6xl font-bold text-amber-400/20 group-hover:text-amber-400/30 transition-colors duration-500 select-none">
-                        {(form.full_name || "Mark Philip")
+                        {form.full_name
                           .split(" ")
                           .map((n) => n[0])
                           .filter(Boolean)
@@ -853,22 +826,15 @@ function PortfolioConfigTab() {
               {/* Name & Headline */}
               <h4 className="text-2xl font-bold mt-4 tracking-tight">
                 <span className="text-white">
-                  {(form.full_name || DEFAULT_PROFILE.full_name)
-                    .split(" ")
-                    .slice(0, -1)
-                    .join(" ")}{" "}
+                  {form.full_name.split(" ").slice(0, -1).join(" ")}{" "}
                 </span>
                 <span className="text-amber-400">
-                  {
-                    (form.full_name || DEFAULT_PROFILE.full_name)
-                      .split(" ")
-                      .slice(-1)[0]
-                  }
-                  .
+                  {form.full_name.split(" ").slice(-1)[0]}
+                  {form.full_name && "."}
                 </span>
               </h4>
               <p className="text-amber-400/90 font-medium text-sm mt-1">
-                {form.headline || DEFAULT_PROFILE.headline}
+                {form.headline}
               </p>
 
               {/* Meta pills */}
@@ -911,7 +877,7 @@ function PortfolioConfigTab() {
                   01. About Me Preview:
                 </p>
                 <div className="p-4 rounded-xl bg-[#1f1a2b]/60 border border-[#342c45] text-xs text-[#a59cb8] leading-relaxed">
-                  {form.summary || DEFAULT_PROFILE.summary}
+                  {form.summary}
                 </div>
               </div>
             </div>

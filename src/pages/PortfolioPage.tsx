@@ -16,11 +16,13 @@ import {
   ChevronRight,
   ArrowUpRight,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import {
   GithubIcon as Github,
   LinkedinIcon as Linkedin,
 } from "../components/BrandIcons";
+import Footer from "../components/Footer";
 import type {
   PortfolioProfile,
   SkillCategory,
@@ -29,120 +31,6 @@ import type {
   GitHubRepo,
   PortfolioConfig,
 } from "../types";
-
-/* ─── Static data (fallback when API is unavailable) ─── */
-const PROFILE: PortfolioProfile = {
-  name: "Mark Philip V. Parayno",
-  headline: "Software Engineer | Full Stack & Mobile Developer (Flutter)",
-  location: "San Juan City, Philippines",
-  email: "paraynomarkphilip@gmail.com",
-  phone: "+63 961 312 8973",
-  linkedin: "https://www.linkedin.com/in/mark-philip-parayno/",
-  github: "https://github.com/MarkParayno1004",
-  summary:
-    "Results-driven Software Engineer, Full Stack and Mobile Developer with hands-on production experience building cross-platform mobile apps (Flutter) and web applications (React, TypeScript, Svelte, Django, Laravel). Skilled in clean architecture, API optimization, and scalable cloud solutions.",
-};
-
-const SKILLS: SkillCategory[] = [
-  {
-    category: "Languages",
-    icon: Code2,
-    color: "blue",
-    items: ["TypeScript", "JavaScript", "Dart", "Python", "PHP", "HTML", "CSS"],
-  },
-  {
-    category: "Mobile",
-    icon: Layers,
-    color: "cyan",
-    items: [
-      "Flutter",
-      "Dart",
-      "Cross-Platform",
-      "Mobile Architecture",
-      "State Management",
-      "APK/Testing Builds",
-    ],
-  },
-  {
-    category: "Frontend",
-    icon: Layers,
-    color: "purple",
-    items: ["React", "Svelte", "Tailwind CSS", "Material UI", "Bootstrap"],
-  },
-  {
-    category: "Backend",
-    icon: Database,
-    color: "green",
-    items: ["Django", "Laravel", "GraphQL", "REST APIs"],
-  },
-  {
-    category: "Data",
-    icon: Database,
-    color: "amber",
-    items: ["PostgreSQL", "MongoDB", "Firebase"],
-  },
-  {
-    category: "Cloud & DevOps",
-    icon: Cloud,
-    color: "cyan",
-    items: ["AWS", "Jenkins", "CircleCI", "CI/CD"],
-  },
-  {
-    category: "Practices",
-    icon: Users,
-    color: "rose",
-    items: [
-      "Agile/Scrum",
-      "Code Review",
-      "AI-assisted development (Cursor, Gemini)",
-    ],
-  },
-];
-
-const EXPERIENCE: ExperienceItem[] = [
-  {
-    title: "Software Specialist",
-    company: "Shopping Center Management Corporation (SM Prime Holdings, Inc.)",
-    period: "Sep 2024 - Present",
-    current: true,
-    bullets: [
-      "Centralized image asset database in Laravel with file conversion & import/export features.",
-      "Svelte microsites and e-commerce platform capabilities.",
-      "Financial app refactoring, eliminating N+1 queries, reducing API response times.",
-      "Internal CMS application support, Jenkins & CircleCI CI/CD pipeline management.",
-    ],
-  },
-  {
-    title: "Software Engineer Intern",
-    company: "Shopping Center Management Corporation (SM Prime Holdings, Inc.)",
-    period: "Dec 2023 - May 2024",
-    current: false,
-    bullets: [
-      "Mobile and web application maintenance, Flutter/Dart refactoring, APK testing builds.",
-      "Collaborated with senior engineers on feature development and code reviews.",
-    ],
-  },
-  {
-    title: "IT Support Intern",
-    company: "National University",
-    period: "May 2024 - Jun 2024",
-    current: false,
-    bullets: [
-      "Hardware/software support, enrollment ID systems, computer lab maintenance.",
-      "Assisted faculty and students with technical troubleshooting and system setup.",
-    ],
-  },
-];
-
-const EDUCATION: EducationItem[] = [
-  {
-    degree: "B.S. Information Technology",
-    specialization: "Mobile & Web Application",
-    school: "National University Philippines, Manila",
-    year: "Sep 2024",
-    icon: GraduationCap,
-  },
-];
 
 /* ─── Warm color map for skills ─── */
 const colorMap: Record<
@@ -285,23 +173,22 @@ export default function PortfolioPage() {
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(true);
   const [config, setConfig] = useState<PortfolioConfig | null>(null);
+  const [configError, setConfigError] = useState(false);
 
-  // Activate scroll-reveal animations
-  useScrollReveal(loadingRepos);
+  // Activate scroll-reveal animations (re-scan once both config and repos have rendered)
+  useScrollReveal(loadingRepos || !config);
 
   useEffect(() => {
-    // Fetch portfolio config
     client
-      .get("/portfolio/config")
-      .then((res) => setConfig(res.data))
-      .catch(() => {});
-
-    // Fetch GitHub repos
-    client
-      .get("/github/repos", {
-        params: { username: "MarkParayno1004", limit: 10 },
-      })
+      .get<PortfolioConfig>("/portfolio/config")
       .then((res) => {
+        setConfig(res.data);
+        // Repos are listed for the GitHub user stored in the config
+        return client
+          .get("/github/repos", {
+            params: { username: res.data.github_username, limit: 10 },
+          })
+          .then((res) => {
         const repoList: GitHubRepo[] = (res.data || []).map(
           (r: Record<string, unknown>) => ({
             id: Number(r.id),
@@ -319,42 +206,41 @@ export default function PortfolioPage() {
                 : Number(r.forks_count || 0),
           }),
         );
-        setRepos(repoList);
+            setRepos(repoList);
+          })
+          .catch(() => {});
       })
-      .catch(() => {})
+      .catch(() => setConfigError(true))
       .finally(() => setLoadingRepos(false));
   }, []);
 
-  const profile: PortfolioProfile = useMemo(() => {
-    const avatar =
-      config?.avatar_url ||
-      config?.avatar ||
-      config?.image ||
-      config?.image_url ||
-      config?.profile_image ||
-      localStorage.getItem("portfolio_avatar") ||
-      "";
-
-    if (!config) return { ...PROFILE, avatar };
-    return {
-      name: config.full_name || config.name || PROFILE.name,
-      headline: config.headline || PROFILE.headline,
-      location: config.location || PROFILE.location,
-      email: config.email || PROFILE.email,
-      phone: config.phone || PROFILE.phone,
-      linkedin: config.linkedin_url || config.linkedin || PROFILE.linkedin,
-      github: config.github_username
+  const profile: PortfolioProfile = useMemo(
+    () => ({
+      name: config?.full_name || config?.name || "",
+      headline: config?.headline || "",
+      location: config?.location || "",
+      email: config?.email || "",
+      phone: config?.phone || "",
+      linkedin: config?.linkedin_url || config?.linkedin || "",
+      github: config?.github_username
         ? config.github_username.startsWith("http")
           ? config.github_username
           : `https://github.com/${config.github_username}?tab=repositories`
-        : config.github || PROFILE.github,
-      summary: config.about_summary || config.summary || PROFILE.summary,
-      avatar,
-    };
-  }, [config]);
+        : config?.github || "",
+      summary: config?.about_summary || config?.summary || "",
+      avatar:
+        config?.avatar_url ||
+        config?.avatar ||
+        config?.image ||
+        config?.image_url ||
+        config?.profile_image ||
+        "",
+    }),
+    [config],
+  );
 
   const skills: SkillCategory[] = useMemo(() => {
-    if (!config?.skills) return SKILLS;
+    if (!config?.skills) return [];
     if (Array.isArray(config.skills)) return config.skills;
     if (typeof config.skills === "object") {
       const skillCategoryMeta: Record<
@@ -376,17 +262,11 @@ export default function PortfolioPage() {
         items: Array.isArray(items) ? items : [],
       }));
     }
-    return SKILLS;
+    return [];
   }, [config]);
 
   const experience: ExperienceItem[] = useMemo(() => {
-    if (
-      !config?.experience ||
-      !Array.isArray(config.experience) ||
-      config.experience.length === 0
-    ) {
-      return EXPERIENCE;
-    }
+    if (!Array.isArray(config?.experience)) return [];
     return config.experience.map((job) => ({
       title: job.role || job.title || "",
       company: job.company || "",
@@ -398,13 +278,7 @@ export default function PortfolioPage() {
   }, [config]);
 
   const education: EducationItem[] = useMemo(() => {
-    if (
-      !config?.education ||
-      !Array.isArray(config.education) ||
-      config.education.length === 0
-    ) {
-      return EDUCATION;
-    }
+    if (!Array.isArray(config?.education)) return [];
     return config.education.map((edu) => ({
       degree: edu.degree || "",
       specialization: edu.specialization || "",
@@ -424,7 +298,20 @@ export default function PortfolioPage() {
   /* ─── Repos ─── */
   const filteredRepos = repos;
 
+  if (!config) {
+    return (
+      <main className="min-h-screen bg-[#15121c] text-[#a59cb8] flex items-center justify-center">
+        {configError ? (
+          <p>Could not load the portfolio. Please try again later.</p>
+        ) : (
+          <Loader2 size={32} className="animate-spin text-amber-500" />
+        )}
+      </main>
+    );
+  }
+
   return (
+    <>
     <main className="min-h-screen bg-[#15121c] text-[#ece8f4]">
       {/* ═══════════════════════════════════════════════
           HERO — Left-aligned, warm, confident
@@ -451,52 +338,62 @@ export default function PortfolioPage() {
               </div>
 
               <h1 className="text-5xl sm:text-7xl lg:text-8xl text-white mb-6">
-                {profile.name || PROFILE.name}
+                {profile.name}
               </h1>
 
               <p className="text-xl sm:text-2xl text-[#a59cb8] font-medium mb-6 max-w-xl">
-                {profile.headline || PROFILE.headline}
+                {profile.headline}
               </p>
 
               {/* Contact pills */}
               <div className="flex flex-wrap items-center gap-2.5 text-sm text-[#a59cb8] mb-8">
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f1a2b] border border-[#342c45]">
-                  <MapPin size={14} className="text-amber-400" />
-                  {profile.location || PROFILE.location}
-                </span>
-                <a
-                  href={`mailto:${profile.email || PROFILE.email}`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f1a2b] border border-[#342c45] hover:border-amber-500/30 hover:text-amber-300 transition-colors"
-                >
-                  <Mail size={14} className="text-amber-400" />
-                  {profile.email || PROFILE.email}
-                </a>
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f1a2b] border border-[#342c45]">
-                  <Phone size={14} className="text-amber-400" />
-                  {profile.phone || PROFILE.phone}
-                </span>
+                {profile.location && (
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f1a2b] border border-[#342c45]">
+                    <MapPin size={14} className="text-amber-400" />
+                    {profile.location}
+                  </span>
+                )}
+                {profile.email && (
+                  <a
+                    href={`mailto:${profile.email}`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f1a2b] border border-[#342c45] hover:border-amber-500/30 hover:text-amber-300 transition-colors"
+                  >
+                    <Mail size={14} className="text-amber-400" />
+                    {profile.email}
+                  </a>
+                )}
+                {profile.phone && (
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f1a2b] border border-[#342c45]">
+                    <Phone size={14} className="text-amber-400" />
+                    {profile.phone}
+                  </span>
+                )}
               </div>
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-3">
-                <a
-                  href={profile.linkedin || PROFILE.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-7 py-3 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 font-medium rounded-lg transition-all duration-200"
-                >
-                  <Linkedin size={18} />
-                  LinkedIn
-                </a>
-                <a
-                  href={profile.github || PROFILE.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-7 py-3 border border-[#342c45] text-[#ece8f4] hover:border-amber-500/30 hover:text-amber-400 font-medium rounded-lg transition-all duration-200"
-                >
-                  <Github size={18} />
-                  GitHub
-                </a>
+                {profile.linkedin && (
+                  <a
+                    href={profile.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-7 py-3 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 font-medium rounded-lg transition-all duration-200"
+                  >
+                    <Linkedin size={18} />
+                    LinkedIn
+                  </a>
+                )}
+                {profile.github && (
+                  <a
+                    href={profile.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-7 py-3 border border-[#342c45] text-[#ece8f4] hover:border-amber-500/30 hover:text-amber-400 font-medium rounded-lg transition-all duration-200"
+                  >
+                    <Github size={18} />
+                    GitHub
+                  </a>
+                )}
               </div>
             </div>
 
@@ -519,7 +416,7 @@ export default function PortfolioPage() {
                       {/* Subtle gradient overlay */}
                       <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       <span className="text-8xl font-bold text-amber-400/20 group-hover:text-amber-400/30 transition-colors duration-500 select-none">
-                        {(profile.name || "Mark Philip")
+                        {profile.name
                           .split(" ")
                           .map((n) => n[0])
                           .filter(Boolean)
@@ -550,6 +447,7 @@ export default function PortfolioPage() {
       {/* ═══════════════════════════════════════════════
           ABOUT
       ═══════════════════════════════════════════════ */}
+      {profile.summary && (
       <Section id="about">
         <SectionHeader
           number="01"
@@ -559,15 +457,17 @@ export default function PortfolioPage() {
         <div className="max-w-3xl reveal">
           <div className="glass-card p-8 accent-left">
             <p className="text-lg leading-relaxed text-[#a59cb8]">
-              {profile.summary || PROFILE.summary}
+              {profile.summary}
             </p>
           </div>
         </div>
       </Section>
+      )}
 
       {/* ═══════════════════════════════════════════════
           SKILLS
       ═══════════════════════════════════════════════ */}
+      {skills.length > 0 && (
       <Section id="skills" className="bg-[#1f1a2b]/30">
         <SectionHeader
           number="02"
@@ -605,10 +505,12 @@ export default function PortfolioPage() {
           })}
         </div>
       </Section>
+      )}
 
       {/* ═══════════════════════════════════════════════
           EXPERIENCE
       ═══════════════════════════════════════════════ */}
+      {experience.length > 0 && (
       <Section id="experience">
         <SectionHeader
           number="03"
@@ -677,6 +579,7 @@ export default function PortfolioPage() {
           </div>
         </div>
       </Section>
+      )}
 
       {/* ═══════════════════════════════════════════════
           GITHUB PROJECTS
@@ -754,9 +657,9 @@ export default function PortfolioPage() {
                 ? "Unable to load repositories. Visit GitHub directly."
                 : "No repositories match your search."}
             </p>
-            {repos.length === 0 && (
+            {repos.length === 0 && profile.github && (
               <a
-                href={PROFILE.github}
+                href={profile.github}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 mt-4 text-amber-400 hover:underline"
@@ -772,6 +675,7 @@ export default function PortfolioPage() {
       {/* ═══════════════════════════════════════════════
           EDUCATION
       ═══════════════════════════════════════════════ */}
+      {education.length > 0 && (
       <Section id="education">
         <SectionHeader
           number="05"
@@ -802,6 +706,9 @@ export default function PortfolioPage() {
           ))}
         </div>
       </Section>
+      )}
     </main>
+    <Footer profile={profile} />
+    </>
   );
 }

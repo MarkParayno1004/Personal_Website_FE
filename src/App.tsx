@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PortfolioPage from "./pages/PortfolioPage";
 
@@ -33,15 +32,7 @@ export default function App() {
           <Suspense fallback={null}>
             <Routes>
               {/* Public Portfolio */}
-              <Route
-                path="/"
-                element={
-                  <>
-                    <PortfolioPage />
-                    <Footer />
-                  </>
-                }
-              />
+              <Route path="/" element={<PortfolioPage />} />
 
               {/* Admin Login */}
               <Route path="/admin/login" element={<AdminLogin />} />
