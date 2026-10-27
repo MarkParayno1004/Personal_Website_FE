@@ -1,0 +1,14 @@
+# style-src 'unsafe-inline': React style={{}} attributes and react-hot-toast's injected <style>.
+# img-src https:/data:: the admin avatar is a FileReader data: URL or any pasted https image URL.
+# connect-src https:: shortcut: API host comes from VITE_API_BASE_URL at build time, not in the repo; replace https: with that origin once known.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Vite content-hashes everything in /assets, so it never changes under the same URL.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
