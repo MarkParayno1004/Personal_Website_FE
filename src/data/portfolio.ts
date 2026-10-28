@@ -5,11 +5,11 @@ import type {
   ExperienceItem,
   EducationItem,
 } from "../types";
-import avatar from "./avatar.jpg";
 
 export const PROFILE: PortfolioProfile = {
   name: "Mark Philip V. Parayno",
-  avatar,
+  // Served from public/ so og:image can point at a stable, unhashed URL.
+  avatar: "/avatar.jpg",
   headline: "Software Engineer | Full Stack & Mobile Developer (Flutter)",
   location: "San Juan City, Philippines",
   email: "paraynomarkphilip@gmail.com",

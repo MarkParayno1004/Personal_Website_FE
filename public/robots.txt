@@ -6,4 +6,4 @@ Disallow: /admin/
 Disallow: /admin/*
 
 # Sitemap
-Sitemap: https://markparayno.dev/sitemap.xml
+Sitemap: https://personal-website-fe.paraynomarkphilip.workers.dev/sitemap.xml
