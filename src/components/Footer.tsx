@@ -32,7 +32,7 @@ export default function Footer({ profile }: { profile: PortfolioProfile }) {
                 className="inline-flex items-center gap-2 px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 active:scale-[0.98]"
               >
                 <Mail size={18} />
-                Say Hello
+                Connect
               </a>
             )}
             {profile.linkedin && (
@@ -81,7 +81,7 @@ export default function Footer({ profile }: { profile: PortfolioProfile }) {
                 Quick Links
               </h3>
               <ul className="space-y-2">
-                {["About", "Skills", "Experience", "Projects", "Education"].map(
+                {["About", "Services", "Skills", "Experience", "Education"].map(
                   (item) => (
                     <li key={item}>
                       <a

@@ -2,7 +2,6 @@ import {
   useState,
   useEffect,
   useCallback,
-  useRef,
   useMemo,
   type ComponentType,
 } from "react";
@@ -15,7 +14,6 @@ import SavingsView from "../components/savings/SavingsView";
 import toast from "react-hot-toast";
 import {
   LayoutDashboard,
-  Palette,
   FolderTree,
   Receipt,
   PiggyBank,
@@ -26,18 +24,11 @@ import {
   Plus,
   Trash2,
   Edit3,
-  Save,
   X,
   ArrowRight,
   ShieldCheck,
   ShieldOff,
   RefreshCw,
-  Upload,
-  Image as ImageIcon,
-  Sparkles,
-  Camera,
-  FileText,
-  FileCheck,
   Search,
   Tag,
 } from "lucide-react";
@@ -58,7 +49,6 @@ interface TabItem {
 /* ─── Tab definitions ─── */
 const TABS: TabItem[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "portfolio", label: "Portfolio Config", icon: Palette },
   { id: "categories", label: "Categories", icon: FolderTree },
   { id: "expenses", label: "Expenses", icon: Receipt },
   { id: "savings", label: "Savings", icon: PiggyBank },
@@ -155,14 +145,8 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
       {/* Quick Actions */}
       <div className="mt-10">
         <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
-            {
-              label: "Portfolio Configurator",
-              desc: "Edit your portfolio content",
-              tab: "portfolio",
-              icon: Palette,
-            },
             {
               label: "Category Manager",
               desc: "Organize expenses & medications",
@@ -201,687 +185,6 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
               </button>
             );
           })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface PortfolioConfigForm {
-  full_name: string;
-  headline: string;
-  location: string;
-  email: string;
-  phone: string;
-  linkedin_url: string;
-  github_username: string;
-  summary: string;
-  avatar_url: string;
-}
-
-function compressImage(
-  file: File,
-  maxWidth = 1000,
-  maxHeight = 1000,
-  quality = 0.85,
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        let { width, height } = img;
-
-        // Resize proportionally if dimensions exceed max
-        if (width > maxWidth || height > maxHeight) {
-          if (width > height) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          } else {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(event.target?.result as string);
-          return;
-        }
-
-        // Draw image smoothly
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Determine format: use webp/jpeg for high compression
-        const outputFormat =
-          file.type === "image/png" || file.type === "image/webp"
-            ? "image/webp"
-            : "image/jpeg";
-
-        let compressed = canvas.toDataURL(outputFormat, quality);
-
-        // Progressive reduction if image is still over ~1.2MB (well below 2MB limit)
-        let currentQuality = quality;
-        while (compressed.length > 1.2 * 1024 * 1024 && currentQuality > 0.4) {
-          currentQuality -= 0.15;
-          compressed = canvas.toDataURL("image/jpeg", currentQuality);
-        }
-
-        resolve(compressed);
-      };
-      img.onerror = (err) => reject(err);
-    };
-    reader.onerror = (err) => reject(err);
-  });
-}
-
-/* ═══════════════════════════════════════════════
-   PORTFOLIO CONFIG TAB
-   ═══════════════════════════════════════════════ */
-function PortfolioConfigTab() {
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cvFileInputRef = useRef<HTMLInputElement>(null);
-  // The CV is private on the backend: we only know whether one exists.
-  const [hasCv, setHasCv] = useState(false);
-  const [cvBusy, setCvBusy] = useState(false);
-  const [form, setForm] = useState<PortfolioConfigForm>({
-    full_name: "",
-    headline: "",
-    location: "",
-    email: "",
-    phone: "",
-    linkedin_url: "",
-    github_username: "",
-    summary: "",
-    avatar_url: "",
-  });
-
-  const fetchConfig = useCallback(() => {
-    client
-      .get("/portfolio/config")
-      .then((res) => {
-        const raw = res.data || {};
-        setHasCv(Boolean(raw.has_cv));
-        setLoadError(false);
-        setForm({
-          full_name: raw.full_name || raw.name || "",
-          headline: raw.headline || "",
-          location: raw.location || "",
-          email: raw.email || "",
-          phone: raw.phone || "",
-          linkedin_url: raw.linkedin_url || raw.linkedin || "",
-          github_username: raw.github_username || raw.github || "",
-          summary: raw.about_summary ?? raw.summary ?? raw.about ?? raw.bio ?? "",
-          avatar_url:
-            raw.avatar_url ||
-            raw.avatar ||
-            raw.image ||
-            raw.image_url ||
-            raw.profile_image ||
-            "",
-        });
-      })
-      .catch(() => {
-        toast.error("Failed to load portfolio config from server");
-        setLoadError(true);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    fetchConfig();
-  }, [fetchConfig]);
-
-  const handleImageFileChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select a valid image file (PNG, JPG, WEBP, SVG)");
-      return;
-    }
-
-    const toastId = toast.loading("Compressing and optimizing image...");
-    try {
-      const compressedDataUrl = await compressImage(file, 1000, 1000, 0.85);
-      const sizeKB = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
-
-      setForm((f) => ({ ...f, avatar_url: compressedDataUrl }));
-      toast.success(
-        `Image optimized to ${sizeKB} KB! Click 'Save Changes' to apply.`,
-        { id: toastId },
-      );
-    } catch {
-      toast.error("Failed to process and compress image", { id: toastId });
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setForm((f) => ({ ...f, avatar_url: "" }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    toast.success("Image removed. Switched to initials avatar.");
-  };
-
-  const handleCvFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (cvFileInputRef.current) cvFileInputRef.current.value = "";
-    if (!file) return;
-
-    if (
-      file.type !== "application/pdf" &&
-      !file.name.toLowerCase().endsWith(".pdf")
-    ) {
-      toast.error("Choose a PDF file (.pdf)");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("The PDF is larger than 10 MB");
-      return;
-    }
-
-    setCvBusy(true);
-    const toastId = toast.loading("Uploading CV...");
-    try {
-      const body = new FormData();
-      body.append("file", file);
-      const res = await client.put("/portfolio/cv", body, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setHasCv(Boolean(res.data?.has_cv));
-      toast.success("CV uploaded", { id: toastId });
-    } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })
-        .response?.data?.detail;
-      toast.error(detail || "CV upload failed", { id: toastId });
-    } finally {
-      setCvBusy(false);
-    }
-  };
-
-  const handleRemoveCv = async () => {
-    setCvBusy(true);
-    try {
-      await client.delete("/portfolio/cv");
-      setHasCv(false);
-      toast.success("CV removed");
-    } catch {
-      toast.error("Could not remove the CV");
-    } finally {
-      setCvBusy(false);
-    }
-  };
-
-  const handleDownloadCv = async () => {
-    try {
-      const res = await client.get("/portfolio/cv", { responseType: "blob" });
-      const url = URL.createObjectURL(res.data as Blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "cv.pdf";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Could not download the CV");
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const payload = {
-        ...form,
-        name: form.full_name,
-        about_summary: form.summary,
-        about: form.summary,
-        bio: form.summary,
-        linkedin: form.linkedin_url,
-        github: form.github_username,
-        avatar: form.avatar_url,
-        avatar_url: form.avatar_url,
-        image: form.avatar_url,
-        image_url: form.avatar_url,
-        profile_image: form.avatar_url,
-      };
-
-      await client.put("/portfolio/config", payload);
-      toast.success("Portfolio config updated successfully!");
-      fetchConfig();
-    } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })
-        .response?.data?.detail;
-      toast.error(detail || "Failed to save portfolio config");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-amber-500" />
-      </div>
-    );
-  }
-
-  // Never show an empty form after a failed load: saving it would wipe the stored config.
-  if (loadError) {
-    return (
-      <div className="text-center py-20 text-[#a59cb8]">
-        <p className="mb-4">Could not load the portfolio config.</p>
-        <button
-          onClick={() => {
-            setLoading(true);
-            fetchConfig();
-          }}
-          className="px-5 py-2 border border-amber-500/30 text-amber-400 rounded-xl hover:bg-amber-500/10"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  const formFields: Array<{
-    key: keyof Omit<
-      PortfolioConfigForm,
-      "summary" | "avatar_url"
-    >;
-    label: string;
-    type: string;
-  }> = [
-    { key: "full_name", label: "Full Name", type: "text" },
-    { key: "headline", label: "Headline", type: "text" },
-    { key: "location", label: "Location", type: "text" },
-    { key: "email", label: "Email", type: "email" },
-    { key: "phone", label: "Phone", type: "tel" },
-    { key: "linkedin_url", label: "LinkedIn URL", type: "url" },
-    { key: "github_username", label: "GitHub Username", type: "text" },
-  ];
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-white">
-            Portfolio Configuration
-          </h2>
-          <p className="text-sm text-[#a59cb8] mt-1">
-            Customize your public portfolio information, hero image, and bio
-            summary.
-          </p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#15121c] font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 active:scale-[0.98] disabled:opacity-60"
-        >
-          {saving ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : (
-            <Save size={18} />
-          )}
-          Save Changes
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Form Column */}
-        <div className="space-y-6">
-          {/* Avatar / Image Upload Card */}
-          <div className="glass-card p-6 accent-left">
-            <div className="flex items-center gap-2 mb-4">
-              <Camera size={20} className="text-amber-400" />
-              <h3 className="text-lg font-semibold text-white">
-                Hero Profile Image
-              </h3>
-            </div>
-            <p className="text-sm text-[#a59cb8] mb-4">
-              Upload a photo to be showcased in the Hero section of your
-              portfolio. If no image is provided, a stylized initials avatar
-              ("MP") will be shown.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-[#15121c]/60 border border-[#342c45]">
-              {/* Thumbnail preview */}
-              <div className="w-24 h-24 rounded-xl bg-[#1f1a2b] border border-[#342c45] flex items-center justify-center overflow-hidden shrink-0 relative group">
-                {form.avatar_url ? (
-                  <img
-                    src={form.avatar_url}
-                    alt="Preview"
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                ) : (
-                  <span className="text-2xl font-bold text-amber-400/40 select-none">
-                    {(form.full_name || "MP")
-                      .split(" ")
-                      .map((n) => n[0])
-                      .filter(Boolean)
-                      .slice(0, 2)
-                      .join("")}
-                  </span>
-                )}
-              </div>
-
-              {/* Upload actions */}
-              <div className="flex-1 space-y-3 w-full">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
-                  onChange={handleImageFileChange}
-                  className="hidden"
-                  id="avatar-file-input"
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  <label
-                    htmlFor="avatar-file-input"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-sm font-medium cursor-pointer transition-colors"
-                  >
-                    <Upload size={16} />
-                    Upload Image
-                  </label>
-                  {form.avatar_url && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveImage}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      <Trash2 size={16} />
-                      Remove
-                    </button>
-                  )}
-                </div>
-                <div className="text-xs text-[#a59cb8]">
-                  Supports PNG, JPG, WEBP, SVG (max 5MB)
-                </div>
-              </div>
-            </div>
-
-            {/* Direct Image URL input */}
-            <div className="mt-4">
-              <label className="block text-xs font-medium text-[#a59cb8] mb-1.5">
-                Or enter image URL:
-              </label>
-              <div className="relative">
-                <ImageIcon
-                  size={16}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a59cb8]"
-                />
-                <input
-                  type="url"
-                  placeholder="https://example.com/photo.jpg"
-                  value={
-                    form.avatar_url.startsWith("data:") ? "" : form.avatar_url
-                  }
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, avatar_url: e.target.value }))
-                  }
-                  className="w-full pl-10 pr-4 py-2 bg-[#15121c] border border-[#342c45] rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* CV / Resume PDF Upload Card */}
-          <div className="glass-card p-6 accent-left">
-            <div className="flex items-center gap-2 mb-4">
-              <FileText size={20} className="text-amber-400" />
-              <h3 className="text-lg font-semibold text-white">
-                Curriculum Vitae (PDF Document)
-              </h3>
-            </div>
-            <p className="text-sm text-[#a59cb8] mb-4">
-              Your CV stays private: visitors are asked to email you instead,
-              and only admins can download it from here. Uploading replaces
-              the previous file right away.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-[#15121c]/60 border border-[#342c45]">
-              {/* PDF icon badge */}
-              <div className="w-16 h-16 rounded-xl bg-[#1f1a2b] border border-[#342c45] flex items-center justify-center shrink-0">
-                <FileText
-                  size={32}
-                  className={
-                    hasCv ? "text-amber-400" : "text-[#a59cb8]/40"
-                  }
-                />
-              </div>
-
-              {/* Upload actions & file details */}
-              <div className="flex-1 space-y-2 w-full">
-                <input
-                  ref={cvFileInputRef}
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  onChange={handleCvFileChange}
-                  disabled={cvBusy}
-                  className="hidden"
-                  id="cv-file-input"
-                />
-
-                {hasCv ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-emerald-400">
-                      <FileCheck size={16} />
-                      <span className="truncate">CV on file (private)</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleDownloadCv}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1f1a2b] hover:text-amber-300 text-[#ece8f4] border border-[#342c45] rounded-lg text-xs font-medium transition-colors"
-                      >
-                        <FileText size={14} />
-                        Download
-                      </button>
-                      <label
-                        htmlFor="cv-file-input"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-medium cursor-pointer transition-colors"
-                      >
-                        <Upload size={14} />
-                        Replace PDF
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleRemoveCv}
-                        disabled={cvBusy}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-medium transition-colors"
-                      >
-                        <Trash2 size={14} />
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="cv-file-input"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-sm font-medium cursor-pointer transition-colors"
-                    >
-                      <Upload size={16} />
-                      Upload PDF Resume / CV
-                    </label>
-                    <div className="text-xs text-[#a59cb8]">
-                      Accepts .PDF files only (max 10MB)
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Basic Information Card */}
-          <div className="glass-card p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              Basic Information
-            </h3>
-            <div className="space-y-4">
-              {formFields.map((field) => (
-                <div key={field.key}>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
-                    {field.label}
-                  </label>
-                  <input
-                    type={field.type}
-                    value={form[field.key]}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, [field.key]: e.target.value }))
-                    }
-                    className="w-full px-4 py-2.5 bg-[#15121c] border border-[#342c45] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Bio Summary Card */}
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-white">
-                Bio & About Summary
-              </h3>
-              <span className="text-xs text-[#a59cb8]">
-                {form.summary.length} characters
-              </span>
-            </div>
-            <p className="text-xs text-[#a59cb8] mb-3">
-              This summary is displayed in the "01. About Me" section on your
-              public portfolio.
-            </p>
-            <textarea
-              value={form.summary}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, summary: e.target.value }))
-              }
-              rows={5}
-              placeholder="Write your professional bio summary..."
-              className="w-full px-4 py-3 bg-[#15121c] border border-[#342c45] rounded-xl focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 outline-none transition-all text-white placeholder:text-slate-500 resize-y leading-relaxed text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Live Preview Column */}
-        <div className="space-y-6">
-          <div className="glass-card p-6 sticky top-20">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Live Preview</h3>
-              <span className="text-xs font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-                Hero & About
-              </span>
-            </div>
-
-            <div className="bg-[#15121c] border border-[#342c45] rounded-2xl p-6 text-center overflow-hidden relative">
-              {/* Background ambient glow */}
-              <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              {/* Hero Avatar Box Preview */}
-              <div className="relative inline-block my-2">
-                <div className="w-48 h-48 rounded-2xl bg-[#1f1a2b] border border-[#342c45] flex items-center justify-center relative overflow-hidden group shadow-xl shadow-black/40">
-                  {form.avatar_url ? (
-                    <>
-                      <img
-                        src={form.avatar_url}
-                        alt="Preview"
-                        className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                    </>
-                  ) : (
-                    <>
-                      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      <span className="text-6xl font-bold text-amber-400/20 group-hover:text-amber-400/30 transition-colors duration-500 select-none">
-                        {form.full_name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .filter(Boolean)
-                          .slice(0, 2)
-                          .join("")}
-                      </span>
-                    </>
-                  )}
-                </div>
-                {/* Decorative offset border */}
-                <div className="absolute -top-3 -right-3 w-48 h-48 rounded-2xl border-2 border-amber-500/20 -z-10" />
-                {/* Corner sparkle */}
-                <div className="absolute -top-1 -right-1 text-amber-400/50">
-                  <Sparkles size={14} />
-                </div>
-              </div>
-
-              {/* Name & Headline */}
-              <h4 className="text-2xl font-bold mt-4 tracking-tight">
-                <span className="text-white">
-                  {form.full_name.split(" ").slice(0, -1).join(" ")}{" "}
-                </span>
-                <span className="text-amber-400">
-                  {form.full_name.split(" ").slice(-1)[0]}
-                  {form.full_name && "."}
-                </span>
-              </h4>
-              <p className="text-amber-400/90 font-medium text-sm mt-1">
-                {form.headline}
-              </p>
-
-              {/* Meta pills */}
-              <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs text-[#a59cb8]">
-                {form.location && (
-                  <span className="px-2.5 py-1 rounded-full bg-[#1f1a2b] border border-[#342c45]">
-                    📍 {form.location}
-                  </span>
-                )}
-                {form.email && (
-                  <span className="px-2.5 py-1 rounded-full bg-[#1f1a2b] border border-[#342c45]">
-                    ✉️ {form.email}
-                  </span>
-                )}
-                {form.phone && (
-                  <span className="px-2.5 py-1 rounded-full bg-[#1f1a2b] border border-[#342c45]">
-                    📞 {form.phone}
-                  </span>
-                )}
-              </div>
-
-              {/* CV Status Badge Preview */}
-              <div className="mt-3 flex items-center justify-center">
-                {hasCv ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
-                    <FileCheck size={13} />
-                    CV on file (private)
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1f1a2b] border border-[#342c45] text-[#a59cb8] text-xs">
-                    <FileText size={13} />
-                    No CV uploaded
-                  </span>
-                )}
-              </div>
-
-              {/* About Summary Box Preview */}
-              <div className="mt-6 pt-5 border-t border-[#342c45]/60 text-left">
-                <p className="text-xs font-mono text-amber-400 mb-2">
-                  01. About Me Preview:
-                </p>
-                <div className="p-4 rounded-xl bg-[#1f1a2b]/60 border border-[#342c45] text-xs text-[#a59cb8] leading-relaxed">
-                  {form.summary}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1027,30 +330,29 @@ function ExpensesTab() {
         ? parseInt(formData.category_id, 10)
         : null;
 
+      const payload = {
+        title: formData.title,
+        gross_income: parseFloat(formData.gross_income) || 0,
+        category_id,
+        items: formData.items
+          .filter((i) => i.description)
+          .map((i) => ({
+            description: i.description,
+            amount: parseFloat(i.amount) || 0,
+          })),
+        tax_deductions: formData.tax_deductions
+          .filter((d) => d.description)
+          .map((d) => ({
+            description: d.description,
+            amount: parseFloat(d.amount) || 0,
+          })),
+      };
+
       if (editSheet) {
-        await client.put(`/expenses/${editSheet.id}`, {
-          title: formData.title,
-          gross_income: parseFloat(formData.gross_income) || 0,
-          category_id,
-        });
+        // Sends the full items/tax_deductions lists; the backend replaces the sheet's rows with them
+        await client.put(`/expenses/${editSheet.id}`, payload);
       } else {
-        await client.post("/expenses/", {
-          title: formData.title,
-          gross_income: parseFloat(formData.gross_income) || 0,
-          category_id,
-          items: formData.items
-            .filter((i) => i.description)
-            .map((i) => ({
-              description: i.description,
-              amount: parseFloat(i.amount) || 0,
-            })),
-          tax_deductions: formData.tax_deductions
-            .filter((d) => d.description)
-            .map((d) => ({
-              description: d.description,
-              amount: parseFloat(d.amount) || 0,
-            })),
-        });
+        await client.post("/expenses/", payload);
       }
       toast.success(
         editSheet ? "Expense sheet updated!" : "Expense sheet created!",
@@ -1205,13 +507,21 @@ function ExpensesTab() {
             const isUpdating = updatingCategoryId === sheet.id;
 
             return (
-              <div key={sheet.id} className="glass-card p-6 border-slate-800 hover:border-slate-700 transition-all">
+              <div
+                key={sheet.id}
+                onClick={() => openEdit(sheet)}
+                className="glass-card p-6 border-slate-800 hover:border-slate-700 transition-all cursor-pointer"
+              >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                      <h3 className="text-lg font-bold text-white">
+                      {/* Button gives keyboard access; its click bubbles to the card */}
+                      <button type="button" className="text-lg font-bold text-white text-left hover:text-emerald-300">
                         {sheet.title || `Sheet #${sheet.id}`}
-                      </h3>
+                      </button>
+                      <span className="text-xs text-slate-400">
+                        {sheet.items?.length || 0} items
+                      </span>
 
                       {/* Category Status Badge */}
                       {isUncategorized ? (
@@ -1227,7 +537,7 @@ function ExpensesTab() {
                   </div>
 
                   {/* Right Actions: Category Dropdown & Edit/Delete */}
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3" onClick={(e) => e.stopPropagation()}>
                     {/* "Assign Category" Dropdown */}
                     <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl px-2.5 py-1 text-xs">
                       <span className="text-slate-400 shrink-0 font-medium">Category:</span>
@@ -1428,58 +738,56 @@ function ExpensesTab() {
               </div>
 
               {/* Line Items */}
-              {!editSheet && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-slate-300">
-                      Expense Items
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => addItem("items")}
-                      className="text-sm text-emerald-400 hover:underline flex items-center gap-1"
-                    >
-                      <Plus size={14} /> Add
-                    </button>
-                  </div>
-                  {formData.items.map((item, idx) => (
-                    <div key={idx} className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        placeholder="Description"
-                        value={item.description}
-                        onChange={(e) =>
-                          updateItem(
-                            "items",
-                            idx,
-                            "description",
-                            e.target.value,
-                          )
-                        }
-                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-white placeholder:text-slate-500"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Amount"
-                        value={item.amount}
-                        onChange={(e) =>
-                          updateItem("items", idx, "amount", e.target.value)
-                        }
-                        className="w-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-white placeholder:text-slate-500"
-                      />
-                      {formData.items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeItem("items", idx)}
-                          className="p-2 text-red-400 hover:bg-slate-700 rounded-lg"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-slate-300">
+                    Expense Items
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => addItem("items")}
+                    className="text-sm text-emerald-400 hover:underline flex items-center gap-1"
+                  >
+                    <Plus size={14} /> Add
+                  </button>
                 </div>
-              )}
+                {formData.items.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Description"
+                      value={item.description}
+                      onChange={(e) =>
+                        updateItem(
+                          "items",
+                          idx,
+                          "description",
+                          e.target.value,
+                        )
+                      }
+                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-white placeholder:text-slate-500"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Amount"
+                      value={item.amount}
+                      onChange={(e) =>
+                        updateItem("items", idx, "amount", e.target.value)
+                      }
+                      className="w-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-white placeholder:text-slate-500"
+                    />
+                    {formData.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem("items", idx)}
+                        className="p-2 text-red-400 hover:bg-slate-700 rounded-lg"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
 
               <button
                 onClick={handleSave}
@@ -1498,6 +806,8 @@ function ExpensesTab() {
 /* ═══════════════════════════════════════════════
    MEDICATIONS TAB
    ═══════════════════════════════════════════════ */
+const medSpent = (med: Medication) => med.total_spent ?? (med.cost || 0) * (med.doses_taken || 0);
+
 function MedicationsTab() {
   const [meds, setMeds] = useState<Medication[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1513,6 +823,7 @@ function MedicationsTab() {
     cost: "",
     doses_taken: "0",
     category_id: "",
+    total_spent: "",
   });
 
   const fetchMeds = useCallback(() => {
@@ -1558,7 +869,7 @@ function MedicationsTab() {
 
   const openCreate = () => {
     setEditMed(null);
-    setForm({ name: "", cost: "", doses_taken: "0", category_id: "" });
+    setForm({ name: "", cost: "", doses_taken: "0", category_id: "", total_spent: "" });
     setShowModal(true);
   };
 
@@ -1569,6 +880,7 @@ function MedicationsTab() {
       cost: String(med.cost),
       doses_taken: String(med.doses_taken),
       category_id: med.category_id ? String(med.category_id) : "",
+      total_spent: String(medSpent(med)),
     });
     setShowModal(true);
   };
@@ -1601,12 +913,21 @@ function MedicationsTab() {
         ? parseInt(form.category_id, 10)
         : null;
 
-      const payload = {
+      const payload: Partial<Medication> = {
         name: form.name,
         cost: parseFloat(form.cost) || 0,
         doses_taken: parseInt(form.doses_taken) || 0,
         category_id,
       };
+      // Only send total_spent when the user changed it, so a stale value never overrides a cost/dose recalculation
+      if (editMed && form.total_spent !== String(medSpent(editMed))) {
+        const spent = parseFloat(form.total_spent);
+        if (isNaN(spent) || spent < 0) {
+          toast.error("Total spent must be a positive number");
+          return;
+        }
+        payload.total_spent = spent;
+      }
       if (editMed) {
         await client.put(`/medications/${editMed.id}`, payload);
         toast.success("Medication updated!");
@@ -1821,12 +1142,7 @@ function MedicationsTab() {
                     <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3 text-center">
                       <p className="text-xs text-slate-400">Total Spent</p>
                       <p className="text-xl font-bold text-purple-300 mt-0.5">
-                        ₱
-                        {(
-                          med.total_spent ||
-                          med.cost * med.doses_taken ||
-                          0
-                        ).toFixed(2)}
+                        ₱{medSpent(med).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -1922,6 +1238,24 @@ function MedicationsTab() {
                   placeholder="0"
                 />
               </div>
+              {editMed && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    Total Spent (₱)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.total_spent}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, total_spent: e.target.value }))
+                    }
+                    className="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-white placeholder:text-slate-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              )}
               <button
                 onClick={handleSave}
                 className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-all shadow-lg shadow-purple-500/25"
@@ -2110,8 +1444,6 @@ export default function AdminDashboard() {
     switch (activeTab) {
       case "overview":
         return <OverviewTab onNavigate={setActiveTab} />;
-      case "portfolio":
-        return <PortfolioConfigTab />;
       case "categories":
         return <CategoriesOverview embedded />;
       case "expenses":

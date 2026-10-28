@@ -7,7 +7,6 @@ export interface User {
   last_name?: string;
   admin?: boolean;
   email_verified?: boolean;
-  has_cv?: boolean;
   profile_picture?: string | null;
 }
 
@@ -48,18 +47,6 @@ export interface EducationItem {
   icon?: ComponentType<{ size?: number; className?: string }>;
 }
 
-export interface GitHubRepo {
-  id: number;
-  name: string;
-  html_url: string;
-  description: string | null;
-  language: string | null;
-  stars?: number;
-  stargazers_count?: number;
-  forks?: number;
-  forks_count?: number;
-}
-
 export interface PortfolioProfile {
   name: string;
   headline: string;
@@ -70,55 +57,6 @@ export interface PortfolioProfile {
   github: string;
   summary: string;
   avatar?: string;
-}
-
-export interface PortfolioConfig {
-  id?: number;
-  full_name?: string;
-  name?: string;
-  headline?: string;
-  location?: string;
-  email?: string;
-  phone?: string;
-  linkedin_url?: string;
-  linkedin?: string;
-  github_username?: string;
-  github?: string;
-  about_summary?: string;
-  summary?: string;
-  avatar_url?: string;
-  avatar?: string;
-  image?: string;
-  image_url?: string;
-  profile_image?: string;
-  cv_url?: string;
-  cv_file?: string;
-  cv?: string;
-  cv_name?: string;
-  resume_url?: string;
-  resume_file?: string;
-  resume?: string;
-  pdf_url?: string;
-  pdf_file?: string;
-  pdf?: string;
-  skills?: SkillCategory[] | Record<string, string[]>;
-  experience?: Array<{
-    role?: string;
-    title?: string;
-    company?: string;
-    period?: string;
-    current?: boolean;
-    bullets?: string[];
-  }>;
-  education?: Array<{
-    degree?: string;
-    specialization?: string;
-    institution?: string;
-    school?: string;
-    graduation_date?: string;
-    year?: string;
-    icon?: ComponentType<{ size?: number; className?: string }>;
-  }>;
 }
 
 export interface DashboardStats {

@@ -19,9 +19,9 @@ interface NavLinkItem {
 
 const navLinks: NavLinkItem[] = [
   { href: "#about", label: "About" },
+  { href: "#services", label: "Services" },
   { href: "#skills", label: "Skills" },
   { href: "#experience", label: "Experience" },
-  { href: "#projects", label: "Projects" },
   { href: "#education", label: "Education" },
 ];
 

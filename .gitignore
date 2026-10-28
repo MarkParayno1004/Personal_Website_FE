@@ -26,3 +26,5 @@ dist-ssr
 
 #env
 .env
+# original full-size photo; the site uses the resized src/data/avatar.jpg
+src/data/4r.jpg

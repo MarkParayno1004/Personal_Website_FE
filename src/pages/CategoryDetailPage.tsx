@@ -29,8 +29,14 @@ import {
   unlinkCategoryItems,
   linkCategoryItems,
 } from "../api/categories";
-import { getExpenses, deleteExpense } from "../api/expenses";
-import { getMedications, deleteMedication, takeMedicationDose } from "../api/medications";
+import { getExpenses, deleteExpense, updateExpense } from "../api/expenses";
+import {
+  getMedications,
+  deleteMedication,
+  takeMedicationDose,
+  updateMedication,
+} from "../api/medications";
+import { apiError } from "../api/forms";
 import ImportItemsModal from "../components/categories/ImportItemsModal";
 import type {
   Category,
@@ -71,6 +77,10 @@ export default function CategoryDetailPage() {
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [showAddMedModal, setShowAddMedModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
+  // Inline "Total Spent" edit on a medication card
+  const [editingSpent, setEditingSpent] = useState<{ id: number; value: string } | null>(null);
 
   // Unlink Modal State
   const [unlinkTarget, setUnlinkTarget] = useState<UnlinkTarget | null>(null);
@@ -185,8 +195,24 @@ export default function CategoryDetailPage() {
     }
   };
 
-  // ─── ADD EXPENSE ───
+  // ─── ADD / EDIT EXPENSE ───
+  const handleOpenEditExpense = (expense: Expense) => {
+    const toRows = (rows?: Array<{ description: string; amount: number }>) =>
+      rows?.length
+        ? rows.map((r) => ({ description: r.description, amount: String(r.amount) }))
+        : [{ description: "", amount: "" }];
+    setEditingExpense(expense);
+    setExpenseForm({
+      title: expense.title,
+      gross_income: String(expense.gross_income || ""),
+      items: toRows(expense.items),
+      tax_deductions: toRows(expense.tax_deductions),
+    });
+    setShowAddExpenseModal(true);
+  };
+
   const handleOpenAddExpense = () => {
+    setEditingExpense(null);
     setExpenseForm({
       title: "",
       gross_income: "",
@@ -224,12 +250,18 @@ export default function CategoryDetailPage() {
           })),
       };
 
-      await createCategoryExpense(categoryId, payload);
-      toast.success("Expense added to category!");
+      if (editingExpense) {
+        // Sends the full items/tax_deductions lists; the backend replaces the sheet's rows with them
+        await updateExpense(editingExpense.id, payload);
+        toast.success("Expense updated!");
+      } else {
+        await createCategoryExpense(categoryId, payload);
+        toast.success("Expense added to category!");
+      }
       setShowAddExpenseModal(false);
       refreshCategory(true);
-    } catch {
-      toast.error("Failed to add expense");
+    } catch (err) {
+      toast.error(apiError(err, editingExpense ? "Failed to update expense" : "Failed to add expense"));
     } finally {
       setIsSubmitting(false);
     }
@@ -378,6 +410,23 @@ export default function CategoryDetailPage() {
       refreshCategory(true);
     } catch {
       toast.error("Failed to log dose");
+    }
+  };
+
+  const handleSaveSpent = async () => {
+    if (!editingSpent) return;
+    const spent = parseFloat(editingSpent.value);
+    if (isNaN(spent) || spent < 0) {
+      toast.error("Total spent must be a positive number");
+      return;
+    }
+    try {
+      await updateMedication(editingSpent.id, { total_spent: spent });
+      toast.success("Total spent updated");
+      setEditingSpent(null);
+      refreshCategory(true);
+    } catch (err) {
+      toast.error(apiError(err, "Failed to update total spent"));
     }
   };
 
@@ -737,10 +786,16 @@ export default function CategoryDetailPage() {
                       className="glass-card overflow-hidden border border-slate-800 hover:border-slate-700 transition-all"
                     >
                       {/* Expense Card Header */}
-                      <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div
+                        onClick={() => handleOpenEditExpense(expense)}
+                        className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
+                      >
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-lg font-bold text-white">{expense.title}</h4>
+                            {/* Button gives keyboard access; its click bubbles to the card */}
+                            <button type="button" className="text-lg font-bold text-white text-left hover:text-emerald-300">
+                              {expense.title}
+                            </button>
                             <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
                               Linked
                             </span>
@@ -770,7 +825,10 @@ export default function CategoryDetailPage() {
                         </div>
 
                         {/* Action Buttons: Breakdown, Unlink, Delete */}
-                        <div className="flex items-center gap-2 self-end sm:self-center">
+                        <div
+                          className="flex items-center gap-2 self-end sm:self-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             onClick={() => toggleExpenseExpand(expense.id)}
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300 hover:text-white transition-colors"
@@ -894,10 +952,7 @@ export default function CategoryDetailPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.medications.map((med: Medication) => {
-                  const spent =
-                    med.total_spent !== undefined
-                      ? med.total_spent
-                      : (med.cost || 0) * (med.doses_taken || 0);
+                  const spent = med.total_spent ?? (med.cost || 0) * (med.doses_taken || 0);
 
                   return (
                     <div
@@ -940,9 +995,48 @@ export default function CategoryDetailPage() {
                             <span>Doses Logged:</span>
                             <strong className="text-purple-300 font-semibold">{med.doses_taken || 0}</strong>
                           </div>
-                          <div className="flex justify-between text-slate-400">
+                          <div className="flex items-center justify-between gap-2 text-slate-400">
                             <span>Total Spent:</span>
-                            <strong className="text-white font-bold">₱{spent.toLocaleString()}</strong>
+                            {editingSpent?.id === med.id ? (
+                              <span className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  aria-label="Total spent"
+                                  value={editingSpent.value}
+                                  onChange={(e) => setEditingSpent({ id: med.id, value: e.target.value })}
+                                  onKeyDown={(e) => e.key === "Enter" && handleSaveSpent()}
+                                  className="w-24 px-2 py-1 rounded-lg bg-slate-950 border border-purple-500 text-xs text-white focus:outline-none"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={handleSaveSpent}
+                                  className="p-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white"
+                                  title="Save total spent"
+                                >
+                                  <Check size={13} />
+                                </button>
+                                <button
+                                  onClick={() => setEditingSpent(null)}
+                                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                                  title="Cancel"
+                                >
+                                  <X size={13} />
+                                </button>
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <strong className="text-white font-bold">₱{spent.toLocaleString()}</strong>
+                                <button
+                                  onClick={() => setEditingSpent({ id: med.id, value: String(spent) })}
+                                  className="p-1 rounded-lg text-slate-400 hover:text-purple-300 hover:bg-slate-900"
+                                  title="Edit total spent"
+                                >
+                                  <Edit3 size={13} />
+                                </button>
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1083,7 +1177,7 @@ export default function CategoryDetailPage() {
               <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                   <Receipt size={20} className="text-emerald-400" />
-                  Add Expense to "{category.title}"
+                  {editingExpense ? `Edit "${editingExpense.title}"` : `Add Expense to "${category.title}"`}
                 </h3>
                 <button
                   onClick={() => setShowAddExpenseModal(false)}
@@ -1237,7 +1331,7 @@ export default function CategoryDetailPage() {
                     className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 transition-all"
                   >
                     {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-                    Add Expense
+                    {editingExpense ? "Save Changes" : "Add Expense"}
                   </button>
                 </div>
               </form>

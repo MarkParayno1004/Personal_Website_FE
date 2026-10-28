@@ -1,36 +1,25 @@
-import { useState, useEffect, useMemo, type ReactNode } from "react";
-import client from "../api/client";
+import { useEffect, type ReactNode } from "react";
 import {
   MapPin,
   Mail,
   Phone,
-  Star,
-  GitFork,
   Calendar,
   GraduationCap,
   Code2,
-  Layers,
-  Database,
-  Cloud,
-  Users,
   ChevronRight,
-  ArrowUpRight,
   Sparkles,
-  Loader2,
 } from "lucide-react";
 import {
   GithubIcon as Github,
   LinkedinIcon as Linkedin,
 } from "../components/BrandIcons";
 import Footer from "../components/Footer";
-import type {
-  PortfolioProfile,
-  SkillCategory,
-  ExperienceItem,
-  EducationItem,
-  GitHubRepo,
-  PortfolioConfig,
-} from "../types";
+import {
+  PROFILE as profile,
+  SKILLS as skills,
+  EXPERIENCE as experience,
+  EDUCATION as education,
+} from "../data/portfolio";
 
 /* ─── Warm color map for skills ─── */
 const colorMap: Record<
@@ -75,31 +64,33 @@ const colorMap: Record<
   },
 };
 
-/* ─── Language color badges ─── */
-const langColors: Record<string, string> = {
-  JavaScript: "#f7df1e",
-  TypeScript: "#3178c6",
-  Python: "#3572a5",
-  Dart: "#00b4ab",
-  PHP: "#4F5D95",
-  HTML: "#e34c26",
-  CSS: "#563d7c",
-  Java: "#b07219",
-  Kotlin: "#A97BFF",
-  Swift: "#F05138",
-  Ruby: "#701516",
-  Go: "#00ADD8",
-  Rust: "#dea584",
-  "C++": "#f34b7d",
-  C: "#555555",
-  "C#": "#239120",
-  Shell: "#89e051",
-  Svelte: "#ff3e00",
+/* ─── Services offered, keyed by skill category ─── */
+// Only categories listed here show up as services.
+const serviceByCategory: Record<string, { title: string; description: string }> = {
+  Frontend: {
+    title: "Web App Development",
+    description: "Responsive, accessible web interfaces and dashboards built with modern frameworks.",
+  },
+  Backend: {
+    title: "Backend & API Development",
+    description: "Secure REST APIs, authentication and business logic that scale with your product.",
+  },
+  Mobile: {
+    title: "Mobile App Development",
+    description: "Cross-platform iOS and Android apps, from first build to store release.",
+  },
+  Data: {
+    title: "Database Design",
+    description: "Schema design, migrations and query tuning for reliable, fast data access.",
+  },
+  "Cloud & DevOps": {
+    title: "Cloud & Deployment",
+    description: "Cloud infrastructure, CI/CD pipelines and deployments that stay in sync.",
+  },
 };
 
 /* ─── Scroll reveal hook ─── */
-// Re-scans when `trigger` changes so elements mounted after async loads get observed.
-function useScrollReveal(trigger: unknown) {
+function useScrollReveal() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -123,7 +114,7 @@ function useScrollReveal(trigger: unknown) {
       cancelAnimationFrame(raf);
       observer.disconnect();
     };
-  }, [trigger]);
+  }, []);
 }
 
 /* ─── Section wrapper ─── */
@@ -170,145 +161,9 @@ function SectionHeader({
 }
 
 export default function PortfolioPage() {
-  const [repos, setRepos] = useState<GitHubRepo[]>([]);
-  const [loadingRepos, setLoadingRepos] = useState(true);
-  const [config, setConfig] = useState<PortfolioConfig | null>(null);
-  const [configError, setConfigError] = useState(false);
+  useScrollReveal();
 
-  // Activate scroll-reveal animations (re-scan once both config and repos have rendered)
-  useScrollReveal(loadingRepos || !config);
-
-  useEffect(() => {
-    client
-      .get<PortfolioConfig>("/portfolio/config")
-      .then((res) => {
-        setConfig(res.data);
-        // Repos are listed for the GitHub user stored in the config
-        return client
-          .get("/github/repos", {
-            params: { username: res.data.github_username, limit: 10 },
-          })
-          .then((res) => {
-        const repoList: GitHubRepo[] = (res.data || []).map(
-          (r: Record<string, unknown>) => ({
-            id: Number(r.id),
-            name: String(r.name || ""),
-            html_url: String(r.html_url || ""),
-            description: r.description ? String(r.description) : null,
-            language: r.language ? String(r.language) : null,
-            stars:
-              typeof r.stars === "number"
-                ? r.stars
-                : Number(r.stargazers_count || 0),
-            forks:
-              typeof r.forks === "number"
-                ? r.forks
-                : Number(r.forks_count || 0),
-          }),
-        );
-            setRepos(repoList);
-          })
-          .catch(() => {});
-      })
-      .catch(() => setConfigError(true))
-      .finally(() => setLoadingRepos(false));
-  }, []);
-
-  const profile: PortfolioProfile = useMemo(
-    () => ({
-      name: config?.full_name || config?.name || "",
-      headline: config?.headline || "",
-      location: config?.location || "",
-      email: config?.email || "",
-      phone: config?.phone || "",
-      linkedin: config?.linkedin_url || config?.linkedin || "",
-      github: config?.github_username
-        ? config.github_username.startsWith("http")
-          ? config.github_username
-          : `https://github.com/${config.github_username}?tab=repositories`
-        : config?.github || "",
-      summary: config?.about_summary || config?.summary || "",
-      avatar:
-        config?.avatar_url ||
-        config?.avatar ||
-        config?.image ||
-        config?.image_url ||
-        config?.profile_image ||
-        "",
-    }),
-    [config],
-  );
-
-  const skills: SkillCategory[] = useMemo(() => {
-    if (!config?.skills) return [];
-    if (Array.isArray(config.skills)) return config.skills;
-    if (typeof config.skills === "object") {
-      const skillCategoryMeta: Record<
-        string,
-        { icon: typeof Code2; color: string }
-      > = {
-        Languages: { icon: Code2, color: "blue" },
-        Mobile: { icon: Layers, color: "cyan" },
-        Frontend: { icon: Layers, color: "purple" },
-        Backend: { icon: Database, color: "green" },
-        Data: { icon: Database, color: "amber" },
-        "Cloud & DevOps": { icon: Cloud, color: "cyan" },
-        Practices: { icon: Users, color: "rose" },
-      };
-      return Object.entries(config.skills).map(([category, items]) => ({
-        category,
-        icon: skillCategoryMeta[category]?.icon || Code2,
-        color: skillCategoryMeta[category]?.color || "blue",
-        items: Array.isArray(items) ? items : [],
-      }));
-    }
-    return [];
-  }, [config]);
-
-  const experience: ExperienceItem[] = useMemo(() => {
-    if (!Array.isArray(config?.experience)) return [];
-    return config.experience.map((job) => ({
-      title: job.role || job.title || "",
-      company: job.company || "",
-      period: job.period || "",
-      current:
-        job.period?.toLowerCase().includes("present") ?? job.current ?? false,
-      bullets: Array.isArray(job.bullets) ? job.bullets : [],
-    }));
-  }, [config]);
-
-  const education: EducationItem[] = useMemo(() => {
-    if (!Array.isArray(config?.education)) return [];
-    return config.education.map((edu) => ({
-      degree: edu.degree || "",
-      specialization: edu.specialization || "",
-      school: edu.institution || edu.school || "",
-      year: edu.graduation_date || edu.year || "",
-      icon: edu.icon || GraduationCap,
-    }));
-  }, [config]);
-
-  // Dynamically sync document title when backend profile data is loaded
-  useEffect(() => {
-    if (profile.name && profile.headline) {
-      document.title = `${profile.name} | ${profile.headline}`;
-    }
-  }, [profile]);
-
-  /* ─── Repos ─── */
-  const filteredRepos = repos;
-
-  if (!config) {
-    return (
-      <main className="min-h-screen bg-[#15121c] text-[#a59cb8] flex items-center justify-center">
-        {configError ? (
-          <p>Could not load the portfolio. Please try again later.</p>
-        ) : (
-          <Loader2 size={32} className="animate-spin text-amber-500" />
-        )}
-      </main>
-    );
-  }
+  const services = skills.filter((group) => serviceByCategory[group.category]);
 
   return (
     <>
@@ -407,7 +262,7 @@ export default function PortfolioPage() {
                       <img
                         src={profile.avatar}
                         alt={profile.name || "Profile"}
-                        className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover object-top rounded-2xl transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                     </>
@@ -465,12 +320,50 @@ export default function PortfolioPage() {
       )}
 
       {/* ═══════════════════════════════════════════════
+          SERVICES
+      ═══════════════════════════════════════════════ */}
+      {services.length > 0 && (
+      <Section id="services" className="bg-[#1f1a2b]/30">
+        <SectionHeader
+          number="02"
+          title="Services"
+          subtitle="What I can build for you"
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 reveal-children">
+          {services.map((group) => {
+            const colors = colorMap[group.color] || colorMap.blue;
+            const Icon = group.icon || Code2;
+            const service = serviceByCategory[group.category];
+            return (
+              <div key={group.category} className="glass-card p-6">
+                <div
+                  className={`inline-flex p-2.5 rounded-xl mb-4 ${colors.bg} border ${colors.border}`}
+                >
+                  <Icon size={22} className={colors.text} />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  {service.title}
+                </h3>
+                <p className="text-sm text-[#a59cb8] mb-4">
+                  {service.description}
+                </p>
+                <p className="text-xs font-mono text-[#a59cb8]">
+                  {group.items.slice(0, 4).join(" · ")}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+      )}
+
+      {/* ═══════════════════════════════════════════════
           SKILLS
       ═══════════════════════════════════════════════ */}
       {skills.length > 0 && (
-      <Section id="skills" className="bg-[#1f1a2b]/30">
+      <Section id="skills">
         <SectionHeader
-          number="02"
+          number="03"
           title="Technical Skills"
           subtitle="Technologies and tools I work with"
         />
@@ -511,9 +404,9 @@ export default function PortfolioPage() {
           EXPERIENCE
       ═══════════════════════════════════════════════ */}
       {experience.length > 0 && (
-      <Section id="experience">
+      <Section id="experience" className="bg-[#1f1a2b]/30">
         <SectionHeader
-          number="03"
+          number="04"
           title="Professional Experience"
           subtitle="My career journey so far"
         />
@@ -580,97 +473,6 @@ export default function PortfolioPage() {
         </div>
       </Section>
       )}
-
-      {/* ═══════════════════════════════════════════════
-          GITHUB PROJECTS
-      ═══════════════════════════════════════════════ */}
-      <Section id="projects" className="bg-[#1f1a2b]/30">
-        <SectionHeader
-          number="04"
-          title="GitHub Projects"
-          subtitle="Open source work and personal projects"
-        />
-
-        {/* Repo Grid */}
-        {loadingRepos ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="glass-card p-6 animate-pulse">
-                <div className="h-5 bg-[#342c45] rounded w-3/4 mb-3" />
-                <div className="h-4 bg-[#342c45] rounded w-full mb-2" />
-                <div className="h-4 bg-[#342c45] rounded w-2/3" />
-              </div>
-            ))}
-          </div>
-        ) : filteredRepos.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 reveal-children">
-            {filteredRepos.map((repo) => (
-              <a
-                key={repo.id}
-                href={repo.html_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="glass-card p-6 group"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-white group-hover:text-amber-400 transition-colors truncate">
-                    {repo.name}
-                  </h3>
-                  <ArrowUpRight
-                    size={18}
-                    className="shrink-0 text-[#a59cb8] group-hover:text-amber-400 transition-colors"
-                  />
-                </div>
-                <p className="text-sm text-[#a59cb8] mb-4 line-clamp-2">
-                  {repo.description || "No description available"}
-                </p>
-                <div className="flex items-center gap-4 text-sm text-[#a59cb8]">
-                  {repo.language && (
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="w-3 h-3 rounded-full"
-                        style={{
-                          backgroundColor:
-                            langColors[repo.language] || "#6b7280",
-                        }}
-                      />
-                      {repo.language}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <Star size={14} />
-                    {repo.stars || 0}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <GitFork size={14} />
-                    {repo.forks || 0}
-                  </span>
-                </div>
-              </a>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 reveal">
-            <Github size={48} className="mx-auto text-[#342c45] mb-4" />
-            <p className="text-[#a59cb8]">
-              {repos.length === 0
-                ? "Unable to load repositories. Visit GitHub directly."
-                : "No repositories match your search."}
-            </p>
-            {repos.length === 0 && profile.github && (
-              <a
-                href={profile.github}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-4 text-amber-400 hover:underline"
-              >
-                <Github size={16} />
-                View on GitHub
-              </a>
-            )}
-          </div>
-        )}
-      </Section>
 
       {/* ═══════════════════════════════════════════════
           EDUCATION
