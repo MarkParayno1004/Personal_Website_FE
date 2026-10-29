@@ -10,14 +10,14 @@ export const PROFILE: PortfolioProfile = {
   name: "Mark Philip V. Parayno",
   // Served from public/ so og:image can point at a stable, unhashed URL.
   avatar: "/avatar.jpg",
-  headline: "Software Engineer | Full Stack & Mobile Developer (Flutter)",
+  headline: "Software Engineer · Mobile & Web Applications",
   location: "San Juan City, Philippines",
   email: "paraynomarkphilip@gmail.com",
   phone: "+63 961 312 8973",
   linkedin: "https://www.linkedin.com/in/mark-philip-parayno/",
   github: "https://github.com/MarkParayno1004",
   summary:
-    "Results-driven Software Engineer, Full Stack and Mobile Developer with hands-on production experience building cross-platform mobile apps (Flutter) and web applications (React, TypeScript, Svelte, Django, Laravel). Skilled in clean architecture, API optimization, and scalable cloud solutions.",
+    "Software Engineer with 2+ years building and shipping production mobile and web apps for a high-traffic retail e-commerce ecosystem. Full-stack across Flutter, Svelte, React, and Django, from customer-facing features and UX fixes to backend performance work such as eliminating N+1 queries to cut API response times. Owns CI/CD with Jenkins and CircleCI, and uses AI-assisted tooling to ship faster without compromising code quality.",
 };
 
 export const SKILLS: SkillCategory[] = [
@@ -25,32 +25,26 @@ export const SKILLS: SkillCategory[] = [
     category: "Languages",
     icon: Code2,
     color: "blue",
-    items: ["TypeScript", "JavaScript", "Dart", "Python", "PHP", "HTML", "CSS"],
+    items: ["TypeScript", "JavaScript", "Dart", "Python", "HTML", "CSS"],
   },
   {
-    category: "Mobile",
-    icon: Layers,
-    color: "cyan",
-    items: [
-      "Flutter",
-      "Dart",
-      "Cross-Platform",
-      "Mobile Architecture",
-      "State Management",
-      "APK/Testing Builds",
-    ],
-  },
-  {
-    category: "Frontend",
+    category: "Mobile & Frontend",
     icon: Layers,
     color: "purple",
-    items: ["React", "Svelte", "Tailwind CSS", "Material UI", "Bootstrap"],
+    items: [
+      "Flutter",
+      "React",
+      "Svelte",
+      "Material UI",
+      "Tailwind CSS",
+      "Bootstrap",
+    ],
   },
   {
     category: "Backend",
     icon: Database,
     color: "green",
-    items: ["Django", "Laravel", "GraphQL", "REST APIs"],
+    items: ["Django", "REST APIs", "GraphQL"],
   },
   {
     category: "Data",
@@ -62,7 +56,18 @@ export const SKILLS: SkillCategory[] = [
     category: "Cloud & DevOps",
     icon: Cloud,
     color: "cyan",
-    items: ["AWS", "Jenkins", "CircleCI", "CI/CD"],
+    items: ["AWS", "Jenkins", "CircleCI", "CI/CD pipelines"],
+  },
+  {
+    category: "Practices",
+    icon: Code2,
+    color: "blue",
+    items: [
+      "Agile/Scrum",
+      "Code review",
+      "Performance tuning",
+      "AI-assisted development (Cursor, Gemini)",
+    ],
   },
 ];
 
@@ -73,10 +78,13 @@ export const EXPERIENCE: ExperienceItem[] = [
     period: "Sep 2024 - Present",
     current: true,
     bullets: [
-      "Centralized image asset database in Laravel with file conversion & import/export features.",
-      "Svelte microsites and e-commerce platform capabilities.",
-      "Financial app refactoring, eliminating N+1 queries, reducing API response times.",
-      "Internal CMS application support, Jenkins & CircleCI CI/CD pipeline management.",
+      "Build and maintain mobile and web apps (Flutter, Svelte, React, Django) powering a high-traffic retail e-commerce ecosystem.",
+      "Ship new capabilities, production fixes, and UX improvements on the Svelte microsites of the company's e-commerce platform.",
+      "Boosted financial app performance by refactoring legacy code and eliminating N+1 queries, reducing database load and API response times.",
+      "Keep the internal CMS apps behind the mobile e-commerce platform reliable, so operations teams can publish content without disruption.",
+      "Own Jenkins and CircleCI deployments, keeping builds, tests, and releases consistent and repeatable.",
+      "Accelerate feature delivery, refactoring, and debugging with Cursor and Gemini while upholding code review and quality standards.",
+      "Contribute across the full Agile cycle: sprint planning, backlog refinement, stand-ups, reviews, and retrospectives.",
     ],
   },
   {
@@ -85,8 +93,9 @@ export const EXPERIENCE: ExperienceItem[] = [
     period: "Dec 2023 - May 2024",
     current: false,
     bullets: [
-      "Mobile and web application maintenance, Flutter/Dart refactoring, APK testing builds.",
-      "Collaborated with senior engineers on feature development and code reviews.",
+      "Delivered features and maintenance across mobile and web applications within an Agile engineering team.",
+      "Refactored Flutter/Dart codebases for readability and stability, and produced APK builds for smoother QA handoff.",
+      "Took part in brainstorming, code reviews, and end-to-end testing with QA throughout each sprint.",
     ],
   },
   {
@@ -95,8 +104,8 @@ export const EXPERIENCE: ExperienceItem[] = [
     period: "May 2024 - Jun 2024",
     current: false,
     bullets: [
-      "Hardware/software support, enrollment ID systems, computer lab maintenance.",
-      "Assisted faculty and students with technical troubleshooting and system setup.",
+      "Resolved hardware and software issues for faculty and staff, minimizing downtime during academic operations.",
+      "Supported enrollment by issuing and updating IDs; maintained computer labs for classes, meetings, and presentations.",
     ],
   },
 ];
@@ -104,7 +113,7 @@ export const EXPERIENCE: ExperienceItem[] = [
 export const EDUCATION: EducationItem[] = [
   {
     degree: "B.S. Information Technology",
-    specialization: "Mobile & Web Application",
+    specialization: "Mobile & Web Applications",
     school: "National University Philippines, Manila",
     year: "Sep 2024",
     icon: GraduationCap,
