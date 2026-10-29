@@ -28,17 +28,16 @@ export const SKILLS: SkillCategory[] = [
     items: ["TypeScript", "JavaScript", "Dart", "Python", "HTML", "CSS"],
   },
   {
-    category: "Mobile & Frontend",
+    category: "Mobile",
+    icon: Layers,
+    color: "cyan",
+    items: ["Flutter", "Cross-Platform", "APK/Testing Builds"],
+  },
+  {
+    category: "Frontend",
     icon: Layers,
     color: "purple",
-    items: [
-      "Flutter",
-      "React",
-      "Svelte",
-      "Material UI",
-      "Tailwind CSS",
-      "Bootstrap",
-    ],
+    items: ["React", "Svelte", "Material UI", "Tailwind CSS", "Bootstrap"],
   },
   {
     category: "Backend",
